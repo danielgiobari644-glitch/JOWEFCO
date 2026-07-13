@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Project | JOWEFCO</title>
+    <meta name="description" content="Start your custom welding or fabrication project with JOWEFCO. Get a quote today.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%230A0A0F%22 stroke=%22%23D4AF37%22 stroke-width=%222%22/><path d=%22M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z%22 fill=%22%23D4AF37%22/></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo" aria-label="JOWEFCO Home">
+                <div class="logo-icon-wrapper">
+                    <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
+                        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
+                        <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <span class="logo-text">JOWEFCO</span>
+            </a>
+            <button class="nav-toggle" id="navToggle" aria-label="Open menu">
+                <span></span><span></span><span></span>
+            </button>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="index.html#home" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Home
+                </a></li>
+                <li><a href="index.html#portfolio" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18" stroke-linecap="round"/></svg>
+                    Portfolio
+                </a></li>
+                <li><a href="shop.html" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Shop
+                </a></li>
+                <li><a href="projects.html" class="nav-link active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Book Project
+                </a></li>
+                <li><a href="index.html#testimonials" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Reviews
+                </a></li>
+                <li><a href="index.html#contact" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Contact
+                </a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Projects Hero -->
+    <section class="projects-hero">
+        <div class="container">
+            <div class="projects-hero-content">
+                <div class="section-badge">Custom Engineering</div>
+                <h1 class="projects-hero-title">Book a Project</h1>
+                <p class="projects-hero-subtitle">Start a conversation about your project needs. Our engineering team will review your requirements and provide a detailed proposal.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Project Types Section -->
+    <section class="project-types-section reveal">
+        <div class="container">
+            <h2 class="section-title">Our Services</h2>
+            <div class="project-types-grid">
+                <div class="project-type-card" data-type="welding">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Structural Welding</h3>
+                    <p>High-quality welding for load-bearing structures and industrial applications.</p>
+                    <ul class="project-type-list">
+                        <li>MIG / TIG / Stick Welding</li>
+                        <li>Structural Steel Erection</li>
+                        <li>Pipe & Pressure Vessel Welding</li>
+                        <li>Alloy & Specialty Metals</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('welding', 'Structural Welding')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+                <div class="project-type-card" data-type="fabrication">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Precision Fabrication</h3>
+                    <p>Custom metal fabrication from technical drawings to finished products.</p>
+                    <ul class="project-type-list">
+                        <li>Sheet Metal Processing</li>
+                        <li>CNC Cutting & Forming</li>
+                        <li>Industrial Components</li>
+                        <li>Assembly & Finishing</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('fabrication', 'Precision Fabrication')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+                <div class="project-type-card" data-type="gates">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M3 21h18M9 7v6M15 7v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Security Systems</h3>
+                    <p>Heavy-duty automated gates, railings, and perimeter security solutions.</p>
+                    <ul class="project-type-list">
+                        <li>Automated Sliding Gates</li>
+                        <li>Architectural Railings</li>
+                        <li>Security Enclosures</li>
+                        <li>Custom Entry Systems</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('gates', 'Security Systems')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+                <div class="project-type-card" data-type="structures">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M3 22V7l9-5 9 5v15M9 22v-5h6v5M9 11h.01M15 11h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Steel Frameworks</h3>
+                    <p>Large-scale steel structures for warehouses, plants, and commercial buildings.</p>
+                    <ul class="project-type-list">
+                        <li>Roof Trusses & Girders</li>
+                        <li>Mezzanine Floors</li>
+                        <li>Support Structures</li>
+                        <li>Plant Maintenance</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('structures', 'Steel Frameworks')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+                <div class="project-type-card" data-type="furniture">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0118 0v6M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Architectural Metal</h3>
+                    <p>High-end custom metal furniture and architectural interior features.</p>
+                    <ul class="project-type-list">
+                        <li>Bespoke Tables & Seating</li>
+                        <li>Retail Display Fixtures</li>
+                        <li>Interior Staircases</li>
+                        <li>Artistic Installations</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('furniture', 'Architectural Metal')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+                <div class="project-type-card" data-type="custom">
+                    <div class="project-type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>Special Projects</h3>
+                    <p>Unique technical challenges that need innovative engineering solutions.</p>
+                    <ul class="project-type-list">
+                        <li>Prototype Development</li>
+                        <li>Specialized Equipment</li>
+                        <li>Restoration Work</li>
+                        <li>Custom R&D Projects</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectProjectType('custom', 'Special Project')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Request Quote
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- My Projects Section -->
+    <section class="my-projects-section reveal">
+        <div class="container">
+            <h2 class="section-title">Your Projects</h2>
+            <div id="myProjectsList" class="my-projects-list">
+                <div class="loading-message">Loading your projects...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Project Booking Modal -->
+    <div id="projectBookingModal" class="modal">
+        <div class="modal-content project-booking-modal">
+            <button class="modal-close" aria-label="Close">&times;</button>
+            <div class="booking-header">
+                <div class="booking-icon" id="bookingIcon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h2 id="bookingTitle">Project Details</h2>
+                <p id="bookingSubtitle">Tell us about your project so we can prepare a quote</p>
+            </div>
+
+            <form id="projectBookingForm">
+                <input type="hidden" id="projectType" value="">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="projectCustomerName">Full Name</label>
+                        <input type="text" id="projectCustomerName" placeholder="Your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectCustomerPhone">Phone Number</label>
+                        <input type="tel" id="projectCustomerPhone" placeholder="e.g. 08012345678" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectLocation">Project Location</label>
+                    <input type="text" id="projectLocation" placeholder="e.g. Lagos, Nigeria" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectTitle">Project Title</label>
+                    <input type="text" id="projectTitle" placeholder="e.g. Industrial Mezzanine Installation" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectDescription">Project Details</label>
+                    <textarea id="projectDescription" rows="5" placeholder="Describe dimensions, material preferences, and specific needs..." required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="projectBudget">Estimated Budget (Optional)</label>
+                        <input type="number" id="projectBudget" placeholder="₦ Amount">
+                    </div>
+                    <div class="form-group">
+                        <label for="projectTimeline">Timeline</label>
+                        <select id="projectTimeline" required>
+                            <option value="">Select priority</option>
+                            <option value="urgent">Urgent (1-2 weeks)</option>
+                            <option value="soon">Standard (2-4 weeks)</option>
+                            <option value="flexible">Flexible (1 month+)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="projectHasDrawing">
+                        <span>I have technical drawings or blueprints to share</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full btn-lg">Send Project Request</button>
+                <p class="booking-note">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Your data is safe. Our team will contact you shortly to discuss your project.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Project Chat Modal -->
+    <div id="projectChatModal" class="modal">
+        <div class="modal-content chat-modal">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="chat-avatar">
+                        <svg viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="3"/>
+                            <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="chat-header-text">
+                        <h3>JOWEFCO Support</h3>
+                        <span class="chat-status">Online</span>
+                    </div>
+                </div>
+                <button class="modal-close chat-close" aria-label="Close chat">&times;</button>
+            </div>
+
+            <div class="chat-project-info" id="chatProjectInfo">
+                <div class="chat-project-details">
+                    <div class="chat-project-icon" id="chatProjectIcon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div>
+                        <h4 id="chatProjectTitle"></h4>
+                        <p class="chat-project-status" id="chatProjectStatus"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="projectChatMessages">
+                <div class="chat-date-divider">Messages</div>
+            </div>
+
+            <div class="chat-input-container">
+                <form id="projectChatForm" class="chat-form">
+                    <input type="text" id="projectChatInput" placeholder="Type your message..." autocomplete="off">
+                    <button type="submit" class="chat-send-btn" aria-label="Send">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </form>
+                <div class="chat-quick-actions">
+                    <button class="quick-action-btn" data-message="Can we schedule a site visit?">Schedule Visit</button>
+                    <button class="quick-action-btn" data-message="What is the current status of my project?">Status Update</button>
+                    <button class="quick-action-btn" data-message="I have updated technical drawings.">New Drawings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Please wait...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Notification Sound -->
+    <audio id="notificationSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUKzn77JiGgU7k9n0y3krBSl+zPLaizsKElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBSh6yO/eiz0HElyx6+yhUBELTKXh8bllHAU2jdXzzn0vBQ==" type="audio/wav">
+    </audio>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <div class="logo-icon-wrapper">
+                            <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
+                                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
+                                <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <span class="logo-text">JOWEFCO</span>
+                    </div>
+                    <p class="footer-tagline">Precision engineering and technical mastery since 2011.</p>
+                    <div class="footer-social" id="footerSocial"></div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html#home">Home</a></li>
+                        <li><a href="index.html#portfolio">Portfolio</a></li>
+                        <li><a href="shop.html">Shop</a></li>
+                        <li><a href="projects.html">Book Project</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Our Services</h4>
+                    <ul class="footer-links">
+                        <li><a href="projects.html">Structural Welding</a></li>
+                        <li><a href="projects.html">Precision Fabrication</a></li>
+                        <li><a href="projects.html">Custom Metalwork</a></li>
+                        <li><a href="projects.html">Industrial Repairs</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Info</h4>
+                    <ul class="footer-contact" id="footerContact">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Loading...</span>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Loading...</span>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span>Loading...</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 JOWEFCO Technical Services. All rights reserved.</p>
+                <p class="footer-credits">Engineered for Excellence</p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="projects.js"></script>
+</body>
+</html>
