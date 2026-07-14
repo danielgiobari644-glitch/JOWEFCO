@@ -1,15 +1,15 @@
 // ==================== FIREBASE CONFIGURATION ====================
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, doc, getDoc, setDoc, Timestamp, query, orderBy, onSnapshot, where, updateDoc } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { getFirestore, collection, getDocs, addDoc, doc, getDoc, setDoc, Timestamp, query, orderBy, onSnapshot, where, updateDoc } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD_0GryZbJQYhI6beMKmb7mCbQyObwiy1Y",
-    authDomain: "fluxx-dc737.firebaseapp.com",
-    projectId: "fluxx-dc737",
-    storageBucket: "fluxx-dc737.firebasestorage.app",
-    messagingSenderId: "98153388161",
-    appId: "1:98153388161:web:0b4e555a1c3e2f42f95580",
-    measurementId: "G-ZYD1BVGQFX"
+    apiKey: "AIzaSyB0KdLj5TnV_9k0jWFz_-2kHSAYHyG8dq0",
+    authDomain: "jowefco.firebaseapp.com",
+    projectId: "jowefco",
+    storageBucket: "jowefco.firebasestorage.app",
+    messagingSenderId: "698975205460",
+    appId: "1:698975205460:web:1e7539da1fc748932115c1",
+    measurementId: "G-5NE7NQQBQE"
 };
 
 const app = initializeApp(firebaseConfig);

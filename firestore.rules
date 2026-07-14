@@ -1,0 +1,228 @@
+rules_version = '2';
+
+// ====================================================================
+// JOWEFCO — Firestore Security Rules
+// ====================================================================
+// App behavior:
+//   • Public visitors are ANONYMOUS (no Firebase Auth).
+//     They get a custom `user_...` id stored in localStorage.
+//   • Only the ADMIN signs in via Firebase Authentication.
+//   • Therefore: creates from the public must be allowed without auth,
+//     but reads of private data (orders, bookings, chats) are restricted
+//     by the `userId` field that the client passes in.
+//   • The admin is identified by their Firebase Auth UID.
+//
+// Collections:
+//   users/{userId}                          — visitor registration
+//   portfolio/{itemId}                      — showcase projects
+//   testimonials/{id}                       — reviews
+//   projectBookings/{id}                    — project inquiries
+//   projectChats/{chatId}                   — chat thread metadata
+//   projectChats/{chatId}/messages/{msgId}  — messages inside a chat
+//   shopItems/{productId}                   — shop catalog
+//   shopOrders/{orderId}                    — orders
+//   settings/{hero, contact, social, payments, sms} — site config
+//
+// HOW TO ACTIVATE ADMIN ACCESS:
+//   1. Create your admin account in Firebase Console → Authentication → Users
+//   2. Copy that user's UID (click the user → copy "User UID")
+//   3. Replace 'REPLACE_WITH_ADMIN_UID' below with that UID
+//   4. Publish the rules
+// ====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // ADMIN DETECTION — UPDATE THIS WITH YOUR REAL ADMIN UID
+    // ----------------------------------------------------------------
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == 'REPLACE_WITH_ADMIN_UID';
+    }
+
+    // ----------------------------------------------------------------
+    // USERS — anyone can register (anonymous public visitors)
+    // ----------------------------------------------------------------
+    match /users/{userId} {
+      // Public visitors create their own user record on first visit.
+      // Doc id is a generated `user_...` string, not auth.uid.
+      allow create: if request.resource.data.keys().hasAll(['id', 'name', 'phone'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() > 0
+                    && request.resource.data.id == userId;
+
+      // The user can update their own record (e.g. lastVisit) by matching
+      // the doc id with the `id` field they pass in the request data.
+      // Admin can read/update any user.
+      allow read, update: if isAdmin()
+                          || (request.resource.data.id == userId
+                              && request.resource.data.keys().hasAny(['lastVisit']));
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // PORTFOLIO — public read, admin write
+    // ----------------------------------------------------------------
+    match /portfolio/{itemId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // TESTIMONIALS — public reads approved; anyone submits pending
+    // ----------------------------------------------------------------
+    match /testimonials/{testimonialId} {
+      // Public can read only APPROVED testimonials
+      allow read: if resource.data.approved == true;
+
+      // Anyone can submit a pending review (must be approved = false)
+      allow create: if request.resource.data.keys().hasAll(['name', 'rating', 'text', 'approved'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.rating is int
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 2000
+                    && request.resource.data.approved == false;
+
+      // Only admin can approve, edit, or delete reviews
+      allow update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // PROJECT BOOKINGS — anyone can create; admin reads/updates all
+    // ----------------------------------------------------------------
+    // NOTE: Public visitors are anonymous, so we cannot enforce ownership
+    // via auth.uid. The client sends `userId` (a localStorage id) which
+    // is used by the admin panel to identify the customer. Anyone can
+    // create a booking; reads are admin-only (the client queries by
+    // userId locally, but Firestore rules can't verify localStorage ids).
+    // ----------------------------------------------------------------
+    match /projectBookings/{bookingId} {
+      allow create: if request.resource.data.keys().hasAll(['userId', 'customerName', 'customerPhone', 'title', 'description', 'status'])
+                    && request.resource.data.customerName is string
+                    && request.resource.data.customerName.size() > 0
+                    && request.resource.data.customerPhone is string
+                    && request.resource.data.customerPhone.size() > 0
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() > 0;
+
+      // Reads + updates + deletes are admin-only.
+      // (If you want users to read their own bookings by userId, you must
+      // enable Firebase Anonymous Auth and relax this rule. For now, the
+      // client just won't see them in the public UI; the admin sees all.)
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // PROJECT CHATS — chat thread metadata
+    // ----------------------------------------------------------------
+    match /projectChats/{chatId} {
+      // Anyone can create a chat thread when submitting a project inquiry
+      allow create: if request.resource.data.keys().hasAll(['userId', 'userName', 'projectId'])
+                    && request.resource.data.userName is string
+                    && request.resource.data.userName.size() > 0
+                    && request.resource.data.projectId is string
+                    && request.resource.data.projectId.size() > 0;
+
+      // Admin can read/update all chats.
+      // Public visitors cannot list chats (they would need to know the chatId
+      // to read — but the client stores the chatId in localStorage and uses
+      // onSnapshot on a specific doc, so we allow get on individual docs).
+      allow get: if true;             // allow fetching a single chat by id
+      allow list: if isAdmin();        // only admin can list all chats
+      allow update: if isAdmin()
+                    || request.resource.data.keys().hasAny(['unreadUser', 'lastMessage', 'lastMessageTime']);
+      allow delete: if isAdmin();
+
+      // ------------------------------------------------------------
+      // MESSAGES inside a project chat
+      // ------------------------------------------------------------
+      match /messages/{messageId} {
+        // Anyone can read messages in a chat if they know the chatId
+        // (the chatId acts as a capability token in this design)
+        allow read: if true;
+
+        // Anyone can add a message — must include sender + message + timestamp
+        allow create: if request.resource.data.keys().hasAll(['sender', 'message', 'timestamp'])
+                      && request.resource.data.sender is string
+                      && (request.resource.data.sender == 'user'
+                          || request.resource.data.sender == 'admin')
+                      && request.resource.data.message is string
+                      && request.resource.data.message.size() > 0
+                      && request.resource.data.message.size() <= 5000;
+
+        // Messages are immutable; only admin can delete
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // SHOP ITEMS — public read catalog; admin writes
+    // ----------------------------------------------------------------
+    match /shopItems/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // SHOP ORDERS — anyone can create (anonymous checkout); admin all
+    // ----------------------------------------------------------------
+    match /shopOrders/{orderId} {
+      // Public visitors create orders at checkout (they are anonymous)
+      allow create: if request.resource.data.keys().hasAll(['userId', 'customerName', 'customerPhone', 'productId', 'productName', 'amount', 'paymentMethod', 'paymentStatus', 'orderStatus'])
+                    && request.resource.data.customerName is string
+                    && request.resource.data.customerName.size() > 0
+                    && request.resource.data.customerPhone is string
+                    && request.resource.data.customerPhone.size() > 0
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.paymentMethod is string
+                    && (request.resource.data.paymentMethod == 'paypal'
+                        || request.resource.data.paymentMethod == 'paystack'
+                        || request.resource.data.paymentMethod == 'flutterwave')
+                    && request.resource.data.paymentStatus == 'paid';
+
+      // Only admin can read/update/delete orders
+      // (Public users cannot list orders — they don't have a "my orders" page)
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // SETTINGS — public read, admin write only
+    // (hero, contact, social, payments, sms)
+    //
+    // ⚠️  NEVER store secret keys here. Only public keys and IDs.
+    //     - PayPal Client ID (safe to expose — it's a public key)
+    //     - Paystack Public Key (safe to expose)
+    //     - Flutterwave Public Key (safe to expose)
+    //     - Currency code/symbol
+    //     - Hero text + media URLs
+    //     - Contact phone/email/address
+    //     - Social media URLs
+    //     - Termii Sender ID (the API key is stored here too, but it's
+    //       only read by admin — if you want stricter security, split
+    //       SMS settings into a separate doc restricted to admin reads)
+    // ----------------------------------------------------------------
+    match /settings/{docId} {
+      // Public can read all settings EXCEPT the SMS doc (which contains
+      // the Termii API key). The SMS doc is admin-only.
+      allow read: if docId == 'sms' ? isAdmin() : true;
+      allow write: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // DEFAULT — deny everything else
+    // ----------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
