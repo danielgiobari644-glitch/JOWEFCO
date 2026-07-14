@@ -54,12 +54,14 @@ service cloud.firestore {
                     && request.resource.data.phone.size() > 0
                     && request.resource.data.id == userId;
 
-      // The user can update their own record (e.g. lastVisit) by matching
-      // the doc id with the `id` field they pass in the request data.
       // Admin can read/update any user.
-      allow read, update: if isAdmin()
-                          || (request.resource.data.id == userId
-                              && request.resource.data.keys().hasAny(['lastVisit']));
+      // Public visitors can update ONLY the `lastVisit` field on their own
+      // user record (used by the app to track active visitors). All other
+      // field changes require admin.
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+                    || request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['lastVisit']);
       allow delete: if isAdmin();
     }
 
