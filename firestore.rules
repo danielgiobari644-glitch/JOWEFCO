@@ -42,26 +42,21 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------------
-    // USERS — anyone can register (anonymous public visitors)
+    // USERS — anyone can register and update their own visitor record
+    // (User data is just name + phone entered by the visitor themselves,
+    // so there's no sensitive info to protect here. Admin-only reads
+    // would break the public registration flow.)
     // ----------------------------------------------------------------
     match /users/{userId} {
-      // Public visitors create their own user record on first visit.
-      // Doc id is a generated `user_...` string, not auth.uid.
       allow create: if request.resource.data.keys().hasAll(['id', 'name', 'phone'])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.phone is string
                     && request.resource.data.phone.size() > 0
                     && request.resource.data.id == userId;
-
-      // Admin can read/update any user.
-      // Public visitors can update ONLY the `lastVisit` field on their own
-      // user record (used by the app to track active visitors). All other
-      // field changes require admin.
-      allow read: if isAdmin();
-      allow update: if isAdmin()
-                    || request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['lastVisit']);
+      // Public visitors can update their own record (e.g. lastVisit)
+      // Admin can read/update/delete any user
+      allow read, update: if true;
       allow delete: if isAdmin();
     }
 

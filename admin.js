@@ -1,634 +1,1265 @@
-/* ============================================
-   JOWEFCO - Admin Panel Logic
-   ============================================ */
+// ==================== FIREBASE CONFIGURATION ====================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { getFirestore, collection, getDocs, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, query, orderBy, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 
-let currentMessageId = null;
+const firebaseConfig = {
+    apiKey: "AIzaSyB0KdLj5TnV_9k0jWFz_-2kHSAYHyG8dq0",
+    authDomain: "jowefco.firebaseapp.com",
+    projectId: "jowefco",
+    storageBucket: "jowefco.firebasestorage.app",
+    messagingSenderId: "698975205460",
+    appId: "1:698975205460:web:1e7539da1fc748932115c1",
+    measurementId: "G-5NE7NQQBQE"
+};
 
-// ---- Init ----
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    document.getElementById('pageLoader').classList.add('hidden');
-  }, 400);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-  // Wait for auth state
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      checkAdminRole(user);
-    } else {
-      showAdminLogin();
+let currentTab = 'dashboard';
+let projectBookingsListener = null;
+let projectChatsListener = null;
+let ordersListener = null;
+let currentProjectFilter = 'all';
+let currentOrdersFilter = 'all';
+let currentTestimonialsFilter = 'pending';
+let currentProjectChatId = null;
+
+// ==================== UTILITY FUNCTIONS ====================
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+function showLoading(show = true) {
+    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+function formatDate(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-NG', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatPrice(amount, symbol = '₦') {
+    const num = parseFloat(amount) || 0;
+    return `${symbol}${num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function playNotificationSound() {
+    const audio = document.getElementById('notificationSound');
+    if (audio) {
+        audio.volume = 1.0;
+        audio.play().catch(e => console.error('Error playing sound:', e));
     }
-  });
-});
-
-function showAdminLogin() {
-  document.getElementById('adminLoginGate').style.display = 'flex';
-  document.getElementById('adminLayout').style.display = 'none';
 }
 
-function showAdminPanel() {
-  document.getElementById('adminLoginGate').style.display = 'none';
-  document.getElementById('adminLayout').style.display = 'grid';
-  loadDashboardStats();
-  loadAdminItems();
-  loadAllOrders();
-  loadGatewayConfigs();
-  loadSocialConfig();
-  loadUsers();
-  loadMessages();
-}
-
-function checkAdminRole(user) {
-  db.collection('users').doc(user.uid).get()
-    .then(doc => {
-      if (doc.exists && (doc.data().role === 'admin' || doc.data().role === 'superadmin')) {
-        showAdminPanel();
-        document.getElementById('adminWelcomeText').textContent = 'Welcome, ' + (doc.data().name || user.email);
-      } else {
-        // If no user doc yet, allow first user to be admin (bootstrap)
-        if (!doc.exists) {
-          db.collection('users').doc(user.uid).set({
-            name: user.displayName || user.email,
-            email: user.email,
-            role: 'admin',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then(() => {
-            showAdminPanel();
-            showToast('Admin Created', 'You have been set up as the first admin.', 'success');
-          });
-        } else {
-          showToast('Access Denied', 'You do not have admin privileges.', 'error');
-          auth.signOut();
-        }
-      }
-    })
-    .catch(err => {
-      console.error('Error checking admin role:', err);
-      showAdminLogin();
-    });
-}
-
-function handleAdminLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('adminLoginEmail').value.trim();
-  const password = document.getElementById('adminLoginPassword').value;
-  if (!email || !password) return showToast('Error', 'Please fill in all fields.', 'error');
-
-  auth.signInWithEmailAndPassword(email, password)
-    .then(() => {
-      showToast('Signed In', 'Welcome to the admin panel.', 'success');
-    })
-    .catch(err => {
-      showToast('Login Failed', err.message, 'error');
-    });
-}
-
-function handleAdminLogout() {
-  if (confirm('Are you sure you want to sign out?')) {
-    auth.signOut();
-    showToast('Signed Out', 'You have been signed out.', 'info');
-  }
-}
-
-// ---- Tabs ----
-function switchAdminTab(tabName, navItem) {
-  document.querySelectorAll('.admin-tab-content').forEach(t => t.style.display = 'none');
-  document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
-  const tabEl = document.getElementById('tab-' + tabName);
-  if (tabEl) tabEl.style.display = 'block';
-  if (navItem) navItem.classList.add('active');
-
-  // Refresh data for tab
-  if (tabName === 'dashboard') loadDashboardStats();
-  if (tabName === 'shop') loadAdminItems();
-  if (tabName === 'orders') loadAllOrders();
-  if (tabName === 'users') loadUsers();
-  if (tabName === 'messages') loadMessages();
-}
-
-// ---- Dashboard Stats ----
-function loadDashboardStats() {
-  let items = 0, orders = 0, users = 0, messages = 0;
-
-  db.collection('shopItems').get().then(s => { items = s.size; updateStat('statTotalItems', items); });
-  db.collection('orders').get().then(s => {
-    orders = s.size;
-    updateStat('statTotalOrders', orders);
-    renderRecentOrders(s);
-  });
-  db.collection('users').get().then(s => { users = s.size; updateStat('statTotalUsers', users); });
-  db.collection('messages').get().then(s => { messages = s.size; updateStat('statTotalMessages', messages); });
-}
-
-function updateStat(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
-function renderRecentOrders(snapshot) {
-  const body = document.getElementById('recentOrdersBody');
-  body.innerHTML = '';
-  const orders = [];
-  snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-  orders.sort((a, b) => {
-    const ta = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
-    const tb = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
-    return tb - ta;
-  });
-  const recent = orders.slice(0, 5);
-  if (recent.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">No orders yet</td></tr>';
-    return;
-  }
-  recent.forEach(order => {
-    const date = order.createdAt ? (order.createdAt.toDate ? order.createdAt.toDate().toLocaleDateString() : 'N/A') : 'N/A';
-    const statusClass = order.status === 'completed' ? 'active' : order.status === 'cancelled' ? 'inactive' : 'pending';
-    const itemNames = (order.items || []).map(i => i.name).join(', ') || 'N/A';
-    body.innerHTML += `
-      <tr>
-        <td style="font-family:monospace;font-size:0.8rem;">#${order.id.substring(0, 8)}</td>
-        <td>${escapeHtml(order.userName || 'Guest')}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(itemNames)}</td>
-        <td style="color:var(--accent);font-weight:700;">$${parseFloat(order.total || 0).toFixed(2)}</td>
-        <td><span class="status-badge ${statusClass}">${order.status || 'pending'}</span></td>
-        <td style="color:var(--text-muted);font-size:0.85rem;">${date}</td>
-      </tr>`;
-  });
-}
-
-// ---- Shop Item Management ----
-function toggleItemForm(show) {
-  const form = document.getElementById('adminItemForm');
-  if (show === false || form.classList.contains('active')) {
-    form.classList.remove('active');
-    resetItemForm();
-  } else {
-    form.classList.add('active');
-  }
-}
-
-function resetItemForm() {
-  document.getElementById('editItemId').value = '';
-  document.getElementById('itemName').value = '';
-  document.getElementById('itemCategory').value = '';
-  document.getElementById('itemPrice').value = '';
-  document.getElementById('itemOldPrice').value = '';
-  document.getElementById('itemStock').value = '';
-  document.getElementById('itemBadge').value = '';
-  document.getElementById('itemIcon').value = 'fas fa-box-open';
-  document.getElementById('itemDescription').value = '';
-  document.getElementById('itemActive').checked = true;
-  document.getElementById('itemFormTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--primary-light);margin-right:8px;"></i>Add New Item';
-}
-
-function handleSaveItem(e) {
-  e.preventDefault();
-  const editId = document.getElementById('editItemId').value;
-  const itemData = {
-    name: document.getElementById('itemName').value.trim(),
-    category: document.getElementById('itemCategory').value.trim(),
-    price: parseFloat(document.getElementById('itemPrice').value) || 0,
-    oldPrice: parseFloat(document.getElementById('itemOldPrice').value) || null,
-    stock: parseInt(document.getElementById('itemStock').value) || 0,
-    badge: document.getElementById('itemBadge').value,
-    icon: document.getElementById('itemIcon').value.trim() || 'fas fa-box-open',
-    description: document.getElementById('itemDescription').value.trim(),
-    active: document.getElementById('itemActive').checked,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-
-  if (!itemData.name || !itemData.category) {
-    return showToast('Error', 'Name and category are required.', 'error');
-  }
-
-  let promise;
-  if (editId) {
-    promise = db.collection('shopItems').doc(editId).update(itemData);
-  } else {
-    itemData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    promise = db.collection('shopItems').add(itemData);
-  }
-
-  promise.then(() => {
-    showToast('Saved!', editId ? 'Item updated successfully.' : 'Item added successfully.', 'success');
-    toggleItemForm(false);
-    loadAdminItems();
-    loadDashboardStats();
-  }).catch(err => {
-    showToast('Error', err.message, 'error');
-  });
-}
-
-function loadAdminItems() {
-  db.collection('shopItems').orderBy('createdAt', 'desc').get()
-    .then(snapshot => {
-      const body = document.getElementById('adminItemsBody');
-      body.innerHTML = '';
-      if (snapshot.empty) {
-        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px;">No items yet. Click "Add New Item" to get started.</td></tr>';
-        return;
-      }
-      snapshot.forEach(doc => {
-        const item = doc.data();
-        item.id = doc.id;
-        const statusClass = item.active !== false ? 'active' : 'inactive';
-        const statusText = item.active !== false ? 'Active' : 'Inactive';
-        const badgeDisplay = item.badge ? `<span class="shop-card-badge ${item.badge}" style="font-size:0.7rem;">${item.badge}</span>` : '<span style="color:var(--text-muted);">—</span>';
-        body.innerHTML += `
-          <tr>
-            <td><strong>${escapeHtml(item.name)}</strong></td>
-            <td>${escapeHtml(item.category)}</td>
-            <td style="color:var(--accent);font-weight:700;">$${parseFloat(item.price).toFixed(2)}</td>
-            <td>${item.stock || 0}</td>
-            <td>${badgeDisplay}</td>
-            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-            <td class="actions">
-              <button class="btn btn-sm btn-secondary" onclick="editItem('${doc.id}')" title="Edit"><i class="fas fa-pen"></i></button>
-              <button class="btn btn-sm btn-danger" onclick="deleteItem('${doc.id}')" title="Delete"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-      });
-    })
-    .catch(err => {
-      showToast('Error', 'Failed to load items: ' + err.message, 'error');
-    });
-}
-
-function editItem(docId) {
-  db.collection('shopItems').doc(docId).get()
-    .then(doc => {
-      if (!doc.exists) return showToast('Error', 'Item not found.', 'error');
-      const item = doc.data();
-      document.getElementById('editItemId').value = docId;
-      document.getElementById('itemName').value = item.name || '';
-      document.getElementById('itemCategory').value = item.category || '';
-      document.getElementById('itemPrice').value = item.price || '';
-      document.getElementById('itemOldPrice').value = item.oldPrice || '';
-      document.getElementById('itemStock').value = item.stock || 0;
-      document.getElementById('itemBadge').value = item.badge || '';
-      document.getElementById('itemIcon').value = item.icon || 'fas fa-box-open';
-      document.getElementById('itemDescription').value = item.description || '';
-      document.getElementById('itemActive').checked = item.active !== false;
-      document.getElementById('itemFormTitle').innerHTML = '<i class="fas fa-pen-to-square" style="color:var(--primary-light);margin-right:8px;"></i>Edit Item';
-      document.getElementById('adminItemForm').classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-}
-
-function deleteItem(docId) {
-  if (!confirm('Are you sure you want to delete this item? This cannot be undone.')) return;
-  db.collection('shopItems').doc(docId).delete()
-    .then(() => {
-      showToast('Deleted', 'Item has been deleted.', 'success');
-      loadAdminItems();
-      loadDashboardStats();
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-// ---- Orders ----
-function loadAllOrders() {
-  db.collection('orders').orderBy('createdAt', 'desc').get()
-    .then(snapshot => {
-      const body = document.getElementById('allOrdersBody');
-      body.innerHTML = '';
-      if (snapshot.empty) {
-        body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">No orders yet</td></tr>';
-        return;
-      }
-      snapshot.forEach(doc => {
-        const order = doc.data();
-        const date = order.createdAt ? (order.createdAt.toDate ? order.createdAt.toDate().toLocaleDateString() : 'N/A') : 'N/A';
-        const itemNames = (order.items || []).map(i => i.name).join(', ') || 'N/A';
-        const statusClass = order.status === 'completed' ? 'active' : order.status === 'cancelled' ? 'inactive' : 'pending';
-        body.innerHTML += `
-          <tr>
-            <td style="font-family:monospace;font-size:0.8rem;">#${doc.id.substring(0, 8)}</td>
-            <td>${escapeHtml(order.userName || 'Guest')}</td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(order.userEmail || 'N/A')}</td>
-            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(itemNames)}</td>
-            <td style="color:var(--accent);font-weight:700;">$${parseFloat(order.total || 0).toFixed(2)}</td>
-            <td style="text-transform:capitalize;">${escapeHtml(order.gateway || 'N/A')}</td>
-            <td><span class="status-badge ${statusClass}">${order.status || 'pending'}</span></td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${date}</td>
-            <td class="actions">
-              ${order.status !== 'completed' ? `<button class="btn btn-sm btn-primary" onclick="updateOrderStatus('${doc.id}','completed')" title="Mark Completed"><i class="fas fa-check"></i></button>` : ''}
-              ${order.status !== 'cancelled' ? `<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${doc.id}','cancelled')" title="Cancel"><i class="fas fa-xmark"></i></button>` : ''}
-            </td>
-          </tr>`;
-      });
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-function updateOrderStatus(orderId, status) {
-  db.collection('orders').doc(orderId).update({ status: status })
-    .then(() => {
-      showToast('Updated', 'Order status changed to ' + status + '.', 'success');
-      loadAllOrders();
-      loadDashboardStats();
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-// ---- Payment Gateway Config ----
-function loadGatewayConfigs() {
-  db.collection('config').doc('paymentGateways').get()
-    .then(doc => {
-      if (doc.exists) {
-        const data = doc.data();
-        // PayPal
-        if (data.paypal) {
-          document.getElementById('paypalClientId').value = data.paypal.clientId || '';
-          document.getElementById('paypalSecret').value = data.paypal.secret || '';
-          document.getElementById('paypalEnabled').checked = data.paypal.enabled || false;
-          updateGatewayStatus('paypal', data.paypal.enabled && data.paypal.clientId);
-        }
-        // Stripe
-        if (data.stripe) {
-          document.getElementById('stripePublishableKey').value = data.stripe.publishableKey || '';
-          document.getElementById('stripeSecretKey').value = data.stripe.secretKey || '';
-          document.getElementById('stripeEnabled').checked = data.stripe.enabled || false;
-          updateGatewayStatus('stripe', data.stripe.enabled && data.stripe.publishableKey);
-        }
-        // Paystack
-        if (data.paystack) {
-          document.getElementById('paystackPublicKey').value = data.paystack.publicKey || '';
-          document.getElementById('paystackSecretKey').value = data.paystack.secretKey || '';
-          document.getElementById('paystackEnabled').checked = data.paystack.enabled || false;
-          updateGatewayStatus('paystack', data.paystack.enabled && data.paystack.publicKey);
-        }
-        // Coinbase
-        if (data.coinbase) {
-          document.getElementById('coinbaseApiKey').value = data.coinbase.apiKey || '';
-          document.getElementById('coinbaseEnabled').checked = data.coinbase.enabled || false;
-          updateGatewayStatus('coinbase', data.coinbase.enabled && data.coinbase.apiKey);
-        }
-      }
-    })
-    .catch(err => console.error('Error loading gateway config:', err));
-}
-
-function updateGatewayStatus(gateway, isActive) {
-  const el = document.getElementById(gateway + 'Status');
-  if (!el) return;
-  if (isActive) {
-    el.innerHTML = '<span class="dot on"></span> Active';
-    el.style.color = 'var(--success)';
-  } else {
-    el.innerHTML = '<span class="dot off"></span> Inactive';
-    el.style.color = 'var(--text-muted)';
-  }
-}
-
-function saveGatewayConfig(gateway) {
-  let config = {};
-
-  switch (gateway) {
-    case 'paypal':
-      config = {
-        clientId: document.getElementById('paypalClientId').value.trim(),
-        secret: document.getElementById('paypalSecret').value.trim(),
-        enabled: document.getElementById('paypalEnabled').checked
-      };
-      break;
-    case 'stripe':
-      config = {
-        publishableKey: document.getElementById('stripePublishableKey').value.trim(),
-        secretKey: document.getElementById('stripeSecretKey').value.trim(),
-        enabled: document.getElementById('stripeEnabled').checked
-      };
-      break;
-    case 'paystack':
-      config = {
-        publicKey: document.getElementById('paystackPublicKey').value.trim(),
-        secretKey: document.getElementById('paystackSecretKey').value.trim(),
-        enabled: document.getElementById('paystackEnabled').checked
-      };
-      break;
-    case 'coinbase':
-      config = {
-        apiKey: document.getElementById('coinbaseApiKey').value.trim(),
-        enabled: document.getElementById('coinbaseEnabled').checked
-      };
-      break;
-  }
-
-  // Use merge to not overwrite other gateway configs
-  const updateObj = {};
-  updateObj[gateway] = config;
-
-  db.collection('config').doc('paymentGateways').set(updateObj, { merge: true })
-    .then(() => {
-      const hasKey = config.clientId || config.publishableKey || config.publicKey || config.apiKey;
-      updateGatewayStatus(gateway, config.enabled && hasKey);
-      showToast('Saved!', gateway.charAt(0).toUpperCase() + gateway.slice(1) + ' configuration saved.', 'success');
-    })
-    .catch(err => {
-      showToast('Error', 'Failed to save: ' + err.message, 'error');
-    });
-}
-
-// ---- Social Links Config ----
-function loadSocialConfig() {
-  db.collection('config').doc('socialLinks').get()
-    .then(doc => {
-      if (doc.exists) {
-        const data = doc.data();
-        document.getElementById('socialFacebook').value = data.facebook || '';
-        document.getElementById('socialTwitter').value = data.twitter || '';
-        document.getElementById('socialInstagram').value = data.instagram || '';
-        document.getElementById('socialLinkedin').value = data.linkedin || '';
-        document.getElementById('socialYoutube').value = data.youtube || '';
-        document.getElementById('socialTiktok').value = data.tiktok || '';
-        document.getElementById('socialWhatsapp').value = data.whatsapp || '';
-        document.getElementById('socialTelegram').value = data.telegram || '';
-      }
-    })
-    .catch(err => console.error('Error loading social config:', err));
-}
-
-function saveSocialLinks() {
-  const links = {
-    facebook: document.getElementById('socialFacebook').value.trim(),
-    twitter: document.getElementById('socialTwitter').value.trim(),
-    instagram: document.getElementById('socialInstagram').value.trim(),
-    linkedin: document.getElementById('socialLinkedin').value.trim(),
-    youtube: document.getElementById('socialYoutube').value.trim(),
-    tiktok: document.getElementById('socialTiktok').value.trim(),
-    whatsapp: document.getElementById('socialWhatsapp').value.trim(),
-    telegram: document.getElementById('socialTelegram').value.trim()
-  };
-
-  db.collection('config').doc('socialLinks').set(links, { merge: true })
-    .then(() => {
-      showToast('Saved!', 'Social links have been updated on the website.', 'success');
-    })
-    .catch(err => {
-      showToast('Error', 'Failed to save: ' + err.message, 'error');
-    });
-}
-
-// ---- Users ----
-function loadUsers() {
-  db.collection('users').orderBy('createdAt', 'desc').get()
-    .then(snapshot => {
-      const body = document.getElementById('usersBody');
-      body.innerHTML = '';
-      if (snapshot.empty) {
-        body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">No users found</td></tr>';
-        return;
-      }
-      snapshot.forEach(doc => {
-        const user = doc.data();
-        const date = user.createdAt ? (user.createdAt.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A') : 'N/A';
-        const roleClass = user.role === 'admin' || user.role === 'superadmin' ? 'active' : 'inactive';
-        const roleText = user.role || 'customer';
-        body.innerHTML += `
-          <tr>
-            <td><strong>${escapeHtml(user.name || 'N/A')}</strong></td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(user.email || 'N/A')}</td>
-            <td><span class="status-badge ${roleClass}">${roleText}</span></td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${date}</td>
-            <td class="actions">
-              <button class="btn btn-sm ${user.role === 'admin' ? 'btn-danger' : 'btn-primary'}" onclick="toggleUserRole('${doc.id}', '${user.role || 'customer'}')" title="Toggle Role">
-                <i class="fas fa-user-shield"></i> ${user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-              </button>
-            </td>
-          </tr>`;
-      });
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-function toggleUserRole(uid, currentRole) {
-  const newRole = (currentRole === 'admin' || currentRole === 'superadmin') ? 'customer' : 'admin';
-  db.collection('users').doc(uid).update({ role: newRole })
-    .then(() => {
-      showToast('Updated', 'User role changed to ' + newRole + '.', 'success');
-      loadUsers();
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-// ---- Messages ----
-function loadMessages() {
-  db.collection('messages').orderBy('createdAt', 'desc').get()
-    .then(snapshot => {
-      const body = document.getElementById('messagesBody');
-      body.innerHTML = '';
-      if (snapshot.empty) {
-        body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">No messages yet</td></tr>';
-        return;
-      }
-      snapshot.forEach(doc => {
-        const msg = doc.data();
-        const date = msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleString() : 'N/A') : 'N/A';
-        const unreadBadge = !msg.read ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;"></span>' : '';
-        body.innerHTML += `
-          <tr>
-            <td>${unreadBadge}${escapeHtml(msg.name || 'N/A')}</td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(msg.email || 'N/A')}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(msg.subject || 'N/A')}</td>
-            <td style="font-size:0.85rem;color:var(--text-muted);">${date}</td>
-            <td class="actions">
-              <button class="btn btn-sm btn-secondary" onclick="viewMessage('${doc.id}')" title="View"><i class="fas fa-eye"></i></button>
-              <button class="btn btn-sm btn-danger" onclick="deleteMessageById('${doc.id}')" title="Delete"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-      });
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-function viewMessage(docId) {
-  currentMessageId = docId;
-  db.collection('messages').doc(docId).get()
-    .then(doc => {
-      if (!doc.exists) return showToast('Error', 'Message not found.', 'error');
-      const msg = doc.data();
-      const date = msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleString() : 'N/A') : 'N/A';
-      document.getElementById('msgFrom').textContent = msg.name || 'N/A';
-      document.getElementById('msgEmail').textContent = msg.email || 'N/A';
-      document.getElementById('msgSubject').textContent = msg.subject || 'N/A';
-      document.getElementById('msgBody').textContent = msg.message || 'No content';
-      document.getElementById('msgDate').textContent = date;
-      document.getElementById('messageModal').classList.add('active');
-
-      // Mark as read
-      if (!msg.read) {
-        db.collection('messages').doc(docId).update({ read: true }).catch(() => {});
-        loadMessages();
-      }
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-function closeMessageModal() {
-  document.getElementById('messageModal').classList.remove('active');
-  currentMessageId = null;
-}
-
-function deleteMessage() {
-  if (!currentMessageId) return;
-  deleteMessageById(currentMessageId);
-  closeMessageModal();
-}
-
-function deleteMessageById(docId) {
-  if (!confirm('Delete this message?')) return;
-  db.collection('messages').doc(docId).delete()
-    .then(() => {
-      showToast('Deleted', 'Message has been deleted.', 'success');
-      loadMessages();
-      loadDashboardStats();
-    })
-    .catch(err => showToast('Error', err.message, 'error'));
-}
-
-// ---- Toast (shared util) ----
-function showToast(title, message, type) {
-  type = type || 'info';
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  const icons = {
-    success: 'fas fa-check',
-    error: 'fas fa-xmark',
-    warning: 'fas fa-exclamation',
-    info: 'fas fa-info'
-  };
-  const toast = document.createElement('div');
-  toast.className = 'toast ' + type;
-  toast.innerHTML = '<div class="toast-icon"><i class="' + (icons[type] || icons.info) + '"></i></div>' +
-    '<div class="toast-content"><div class="toast-title">' + title + '</div>' +
-    '<div class="toast-message">' + message + '</div></div>' +
-    '<span class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-xmark"></i></span>';
-  container.appendChild(toast);
-  setTimeout(function () {
-    toast.classList.add('removing');
-    setTimeout(function () { toast.remove(); }, 400);
-  }, 4000);
-}
-
-// ---- Utility ----
 function escapeHtml(str) {
-  if (!str) return '';
-  var div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+    if (str == null) return '';
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
 }
 
-// ---- Close modals on overlay click ----
-document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
-  overlay.addEventListener('click', function (e) {
-    if (e.target === overlay) {
-      overlay.classList.remove('active');
+// ==================== AUTHENTICATION ====================
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        showLoading(true);
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast('Welcome back!', 'success');
+    } catch (error) {
+        document.getElementById('loginError').textContent = 'Invalid email or password.';
+    } finally {
+        showLoading(false);
     }
-  });
 });
 
-// ---- Keyboard: Escape to close ----
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.active').forEach(function (m) { m.classList.remove('active'); });
-  }
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        showToast('Signed out successfully', 'success');
+    } catch (error) {
+        showToast('Could not sign out', 'error');
+    }
 });
+
+document.getElementById('viewSiteBtn').addEventListener('click', () => window.open('index.html', '_blank'));
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        initializeDashboard();
+    } else {
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('adminDashboard').style.display = 'none';
+        if (projectBookingsListener) { projectBookingsListener(); projectBookingsListener = null; }
+        if (projectChatsListener) { projectChatsListener(); projectChatsListener = null; }
+        if (ordersListener) { ordersListener(); ordersListener = null; }
+    }
+});
+
+// ==================== TAB NAVIGATION ====================
+document.querySelectorAll('.admin-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Mobile sidebar toggle
+const adminSidebarToggle = document.getElementById('adminSidebarToggle');
+const adminSidebar = document.getElementById('adminSidebar');
+const adminOverlay = document.getElementById('adminOverlay');
+
+if (adminSidebarToggle) {
+    adminSidebarToggle.addEventListener('click', () => {
+        adminSidebar.classList.add('active');
+        adminOverlay.classList.add('active');
+    });
+}
+if (adminOverlay) {
+    adminOverlay.addEventListener('click', () => {
+        adminSidebar.classList.remove('active');
+        adminOverlay.classList.remove('active');
+    });
+}
+
+function switchTab(tabName) {
+    currentTab = tabName;
+    document.querySelectorAll('.admin-nav-btn').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.tab === tabName));
+    document.querySelectorAll('.admin-tab').forEach(tab =>
+        tab.classList.toggle('active', tab.id === tabName + 'Tab'));
+
+    // Close mobile sidebar
+    if (adminSidebar) adminSidebar.classList.remove('active');
+    if (adminOverlay) adminOverlay.classList.remove('active');
+
+    loadTabContent(tabName);
+}
+
+async function loadTabContent(tabName) {
+    switch (tabName) {
+        case 'dashboard': await loadDashboard(); break;
+        case 'hero': await loadHeroSettings(); break;
+        case 'portfolio': await loadPortfolioManagement(); break;
+        case 'shop': await loadShopManagement(); break;
+        case 'orders': await loadOrdersManagement(); break;
+        case 'projects': await loadProjectsManagement(); break;
+        case 'users': await loadUsersManagement(); break;
+        case 'testimonials': await loadTestimonialsManagement(); break;
+        case 'contact': await loadContactSettings(); break;
+        case 'social': await loadSocialSettings(); break;
+        case 'payments': await loadPaymentSettings(); break;
+        case 'settings': await loadSettings(); break;
+    }
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboard() {
+    try {
+        const [projectsSnap, portfolioSnap, usersSnap, ordersSnap, productsSnap, testimonialsSnap] = await Promise.all([
+            getDocs(collection(db, 'projectBookings')),
+            getDocs(collection(db, 'portfolio')),
+            getDocs(collection(db, 'users')),
+            getDocs(collection(db, 'shopOrders')),
+            getDocs(collection(db, 'shopItems')),
+            getDocs(query(collection(db, 'testimonials'), where('approved', '==', false)))
+        ]);
+
+        setText('totalProjects', projectsSnap.size || 0);
+        setText('totalOrders', ordersSnap.size || 0);
+        setText('totalPortfolio', portfolioSnap.size || 0);
+        setText('totalProducts', productsSnap.size || 0);
+        setText('totalUsers', usersSnap.size || 0);
+        setText('pendingReviews', testimonialsSnap.size || 0);
+        setText('testimonialsBadge', testimonialsSnap.size || 0);
+        setText('ordersBadge', ordersSnap.size || 0);
+
+        // Recent activity
+        const activityList = document.getElementById('recentActivityList');
+        if (activityList) {
+            const activities = [];
+
+            projectsSnap.forEach(d => {
+                const p = d.data();
+                activities.push({
+                    icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/>',
+                    text: `New project inquiry: ${escapeHtml(p.title || 'Untitled')}`,
+                    time: p.createdAt
+                });
+            });
+            ordersSnap.forEach(d => {
+                const o = d.data();
+                activities.push({
+                    icon: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/>',
+                    text: `New order: ${escapeHtml(o.productName || 'Product')} (${formatPrice(o.amount)})`,
+                    time: o.createdAt
+                });
+            });
+            testimonialsSnap.forEach(d => {
+                const t = d.data();
+                activities.push({
+                    icon: '<path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/>',
+                    text: `New review from ${escapeHtml(t.name || 'Customer')}`,
+                    time: t.createdAt
+                });
+            });
+
+            activities.sort((a, b) => {
+                const ta = a.time?.toMillis ? a.time.toMillis() : 0;
+                const tb = b.time?.toMillis ? b.time.toMillis() : 0;
+                return tb - ta;
+            });
+
+            if (activities.length === 0) {
+                activityList.innerHTML = '<p style="color: var(--text-tertiary); text-align: center; padding: 1rem;">No recent activity</p>';
+            } else {
+                activityList.innerHTML = activities.slice(0, 8).map(a => `
+                    <div class="activity-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${a.icon}</svg>
+                        <span>${a.text}</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+// ==================== HERO SETTINGS ====================
+async function loadHeroSettings() {
+    try {
+        const heroDoc = await getDoc(doc(db, 'settings', 'hero'));
+        if (heroDoc.exists()) {
+            const data = heroDoc.data();
+            const titleInput = document.getElementById('heroTitleInput');
+            const descInput = document.getElementById('heroDescriptionInput');
+            if (titleInput) titleInput.value = data.title || '';
+            if (descInput) descInput.value = data.description || '';
+            displayHeroMediaList(data.media || []);
+        }
+    } catch (error) {
+        console.error('Error loading hero settings:', error);
+    }
+}
+
+function displayHeroMediaList(media) {
+    const list = document.getElementById('heroMediaList');
+    if (!list) return;
+    list.innerHTML = media.length === 0
+        ? '<p style="color: var(--text-tertiary); text-align:center; padding:1rem;">No media added yet.</p>'
+        : '';
+
+    media.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'hero-media-item';
+
+        let previewHtml = item.type === 'video'
+            ? `<video src="${item.url}" muted></video>`
+            : `<img src="${item.url}" alt="Media ${index + 1}">`;
+
+        div.innerHTML = `
+            ${previewHtml}
+            <div class="hero-media-info">
+                <p style="font-weight: 600; color: var(--primary-color); margin: 0 0 0.25rem;">${item.type.toUpperCase()} ${index + 1}</p>
+                <p style="word-break: break-all;">${escapeHtml(item.url)}</p>
+            </div>
+            <button class="btn-delete" onclick="deleteHeroMedia(${index})">Remove</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('previewMediaBtn')?.addEventListener('click', () => {
+    const mediaType = document.getElementById('heroMediaType').value;
+    const mediaUrl = document.getElementById('heroMediaUrl').value.trim();
+    const preview = document.getElementById('heroMediaPreview');
+    if (!mediaUrl) return;
+    preview.innerHTML = mediaType === 'video'
+        ? `<video src="${mediaUrl}" controls muted></video>`
+        : `<img src="${mediaUrl}" alt="Preview">`;
+});
+
+document.getElementById('heroForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('heroTitleInput').value.trim();
+    const description = document.getElementById('heroDescriptionInput').value.trim();
+
+    try {
+        showLoading(true);
+        const heroDoc = await getDoc(doc(db, 'settings', 'hero'));
+        const currentData = heroDoc.exists() ? heroDoc.data() : {};
+        await setDoc(doc(db, 'settings', 'hero'), { ...currentData, title, description, updatedAt: Timestamp.now() });
+        showToast('Hero text saved', 'success');
+    } catch (error) {
+        showToast('Could not save changes', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+document.getElementById('heroMediaForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const type = document.getElementById('heroMediaType').value;
+    const url = document.getElementById('heroMediaUrl').value.trim();
+
+    try {
+        showLoading(true);
+        const heroDoc = await getDoc(doc(db, 'settings', 'hero'));
+        const currentData = heroDoc.exists() ? heroDoc.data() : { title: '', description: '' };
+        const media = currentData.media || [];
+        media.push({ type, url, addedAt: Date.now() });
+        await setDoc(doc(db, 'settings', 'hero'), { ...currentData, media, updatedAt: Timestamp.now() });
+        showToast('Media added successfully', 'success');
+        document.getElementById('heroMediaForm').reset();
+        document.getElementById('heroMediaPreview').innerHTML = '';
+        displayHeroMediaList(media);
+    } catch (error) {
+        showToast('Could not add media', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+window.deleteHeroMedia = async function (index) {
+    if (!confirm('Remove this media?')) return;
+    try {
+        showLoading(true);
+        const heroDoc = await getDoc(doc(db, 'settings', 'hero'));
+        const data = heroDoc.data();
+        const media = data.media || [];
+        media.splice(index, 1);
+        await setDoc(doc(db, 'settings', 'hero'), { ...data, media, updatedAt: Timestamp.now() });
+        showToast('Media removed', 'success');
+        displayHeroMediaList(media);
+    } catch (error) {
+        showToast('Could not remove media', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==================== PORTFOLIO MANAGEMENT ====================
+async function loadPortfolioManagement() {
+    try {
+        const portfolioSnapshot = await getDocs(collection(db, 'portfolio'));
+        const list = document.getElementById('portfolioList');
+        if (!list) return;
+        list.innerHTML = portfolioSnapshot.empty
+            ? '<p style="text-align: center; color: var(--text-tertiary); grid-column: 1/-1;">No portfolio items yet.</p>'
+            : '';
+
+        const items = [];
+        portfolioSnapshot.forEach(docSnap => {
+            items.push({ ...docSnap.data(), id: docSnap.id });
+        });
+        items.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+        items.forEach(item => list.appendChild(createPortfolioItemCard(item)));
+    } catch (error) {
+        console.error('Error loading portfolio:', error);
+    }
+}
+
+document.getElementById('previewPortfolioBtn')?.addEventListener('click', () => {
+    const type = document.getElementById('portfolioMediaType').value;
+    const url = document.getElementById('portfolioMediaUrl').value.trim();
+    const preview = document.getElementById('portfolioMediaPreview');
+    if (!url) return;
+    preview.innerHTML = type === 'video'
+        ? `<video src="${url}" controls muted></video>`
+        : `<img src="${url}" alt="Preview">`;
+});
+
+document.getElementById('portfolioForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('portfolioTitle').value.trim();
+    const description = document.getElementById('portfolioDescription').value.trim();
+    const category = document.getElementById('portfolioCategory').value;
+    const mediaType = document.getElementById('portfolioMediaType').value;
+    const media = document.getElementById('portfolioMediaUrl').value.trim();
+
+    try {
+        showLoading(true);
+        await addDoc(collection(db, 'portfolio'), { title, description, category, mediaType, media, createdAt: Timestamp.now() });
+        showToast('Portfolio item added', 'success');
+        document.getElementById('portfolioForm').reset();
+        document.getElementById('portfolioMediaPreview').innerHTML = '';
+        await loadPortfolioManagement();
+    } catch (error) {
+        showToast('Could not add portfolio item', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+function createPortfolioItemCard(item) {
+    const div = document.createElement('div');
+    div.className = 'item-card';
+    const mediaHtml = item.mediaType === 'video'
+        ? `<video class="item-card-media" src="${item.media}" muted></video>`
+        : `<img class="item-card-media" src="${item.media}" alt="${escapeHtml(item.title)}">`;
+
+    div.innerHTML = `
+        ${mediaHtml}
+        <div class="item-card-content">
+            <h4 class="item-card-title">${escapeHtml(item.title)}</h4>
+            <p class="item-card-description">${escapeHtml(item.description)}</p>
+            <div class="item-card-meta">${escapeHtml(item.category || 'General')}</div>
+            <div class="item-card-actions">
+                <button class="btn-delete" onclick="deletePortfolioItem('${item.id}')">Remove</button>
+            </div>
+        </div>
+    `;
+    return div;
+}
+
+window.deletePortfolioItem = async function (id) {
+    if (!confirm('Remove this portfolio item?')) return;
+    try {
+        showLoading(true);
+        await deleteDoc(doc(db, 'portfolio', id));
+        showToast('Item removed', 'success');
+        await loadPortfolioManagement();
+    } catch (error) {
+        showToast('Could not remove item', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==================== SHOP MANAGEMENT ====================
+async function loadShopManagement() {
+    try {
+        const snapshot = await getDocs(collection(db, 'shopItems'));
+        const list = document.getElementById('productsList');
+        if (!list) return;
+        list.innerHTML = snapshot.empty
+            ? '<p style="text-align: center; color: var(--text-tertiary); grid-column: 1/-1;">No products added yet.</p>'
+            : '';
+
+        const items = [];
+        snapshot.forEach(docSnap => items.push({ ...docSnap.data(), id: docSnap.id }));
+        items.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+        items.forEach(item => list.appendChild(createProductCard(item)));
+    } catch (error) {
+        console.error('Error loading shop items:', error);
+    }
+}
+
+document.getElementById('previewProductBtn')?.addEventListener('click', () => {
+    const type = document.getElementById('productMediaType').value;
+    const url = document.getElementById('productMediaUrl').value.trim();
+    const preview = document.getElementById('productMediaPreview');
+    if (!url) return;
+    preview.innerHTML = type === 'video'
+        ? `<video src="${url}" controls muted></video>`
+        : `<img src="${url}" alt="Preview">`;
+});
+
+document.getElementById('productForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('productName').value.trim();
+    const description = document.getElementById('productDescription').value.trim();
+    const priceMin = parseFloat(document.getElementById('productPriceMin').value);
+    const priceMax = parseFloat(document.getElementById('productPriceMax').value);
+    const category = document.getElementById('productCategory').value.trim();
+    const mediaType = document.getElementById('productMediaType').value;
+    const mediaUrl = document.getElementById('productMediaUrl').value.trim();
+
+    if (priceMin > priceMax) {
+        showToast('Minimum price cannot be higher than maximum', 'error');
+        return;
+    }
+
+    try {
+        showLoading(true);
+        await addDoc(collection(db, 'shopItems'), {
+            name,
+            description,
+            priceMin,
+            priceMax,
+            category: category || null,
+            mediaType,
+            media: mediaUrl,
+            createdAt: Timestamp.now()
+        });
+        showToast('Product added successfully', 'success');
+        document.getElementById('productForm').reset();
+        document.getElementById('productMediaPreview').innerHTML = '';
+        await loadShopManagement();
+    } catch (error) {
+        showToast('Could not add product', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+function createProductCard(item) {
+    const div = document.createElement('div');
+    div.className = 'item-card';
+    const mediaHtml = item.mediaType === 'video'
+        ? `<video class="item-card-media" src="${item.media}" muted></video>`
+        : `<img class="item-card-media" src="${item.media}" alt="${escapeHtml(item.name)}">`;
+
+    const priceText = (item.priceMin === item.priceMax)
+        ? formatPrice(item.priceMax)
+        : `${formatPrice(item.priceMin)} - ${formatPrice(item.priceMax)}`;
+
+    div.innerHTML = `
+        ${mediaHtml}
+        <div class="item-card-content">
+            <h4 class="item-card-title">${escapeHtml(item.name)}</h4>
+            <p class="item-card-description">${escapeHtml(item.description)}</p>
+            <div class="item-card-meta">${priceText}</div>
+            ${item.category ? `<div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 0.5rem;">${escapeHtml(item.category)}</div>` : ''}
+            <div class="item-card-actions">
+                <button class="btn-delete" onclick="deleteProduct('${item.id}')">Remove</button>
+            </div>
+        </div>
+    `;
+    return div;
+}
+
+window.deleteProduct = async function (id) {
+    if (!confirm('Remove this product?')) return;
+    try {
+        showLoading(true);
+        await deleteDoc(doc(db, 'shopItems', id));
+        showToast('Product removed', 'success');
+        await loadShopManagement();
+    } catch (error) {
+        showToast('Could not remove product', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==================== ORDERS MANAGEMENT ====================
+async function loadOrdersManagement() {
+    if (ordersListener) { ordersListener(); ordersListener = null; }
+
+    ordersListener = onSnapshot(collection(db, 'shopOrders'), async () => {
+        await displayOrders(currentOrdersFilter);
+    });
+
+    // Setup filter buttons
+    document.querySelectorAll('.orders-filter .filter-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.orders-filter .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentOrdersFilter = btn.dataset.status;
+            displayOrders(currentOrdersFilter);
+        };
+    });
+}
+
+async function displayOrders(filter = 'all') {
+    try {
+        let q = collection(db, 'shopOrders');
+        if (filter !== 'all') {
+            q = query(q, where('orderStatus', '==', filter));
+        }
+        const snapshot = await getDocs(q);
+        const list = document.getElementById('ordersList');
+        if (!list) return;
+        list.innerHTML = snapshot.empty
+            ? '<p style="text-align: center; color: var(--text-tertiary); padding: 1rem;">No orders found.</p>'
+            : '';
+
+        const orders = [];
+        snapshot.forEach(docSnap => orders.push({ ...docSnap.data(), id: docSnap.id }));
+        orders.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+        orders.forEach(order => list.appendChild(createOrderCard(order)));
+    } catch (error) {
+        console.error('Error loading orders:', error);
+    }
+}
+
+function createOrderCard(order) {
+    const div = document.createElement('div');
+    div.className = 'order-card';
+    div.style.animation = 'fadeInUp 0.4s ease-out backwards';
+
+    const statusLabel = {
+        'pending': 'Pending',
+        'completed': 'Completed',
+        'cancelled': 'Cancelled'
+    }[order.orderStatus] || 'Pending';
+
+    const paymentLabel = order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid';
+
+    div.innerHTML = `
+        <div class="order-header">
+            <div>
+                <p class="order-id">${escapeHtml(order.productName)}</p>
+                <p class="order-details"><strong>Customer:</strong> ${escapeHtml(order.customerName)} (${escapeHtml(order.customerPhone)})</p>
+                ${order.customerEmail ? `<p class="order-details"><strong>Email:</strong> ${escapeHtml(order.customerEmail)}</p>` : ''}
+            </div>
+            <span class="order-status ${order.orderStatus}">${statusLabel}</span>
+        </div>
+        <p class="order-details"><strong>Amount:</strong> ${formatPrice(order.amount, order.currency === 'NGN' ? '₦' : '$')}</p>
+        <p class="order-details"><strong>Payment:</strong> ${escapeHtml(order.paymentMethod)} - ${paymentLabel}</p>
+        <p class="order-details"><strong>Reference:</strong> ${escapeHtml(order.paymentRef || 'N/A')}</p>
+        <p class="order-details"><strong>Date:</strong> ${formatDate(order.createdAt)}</p>
+        <div class="order-actions">
+            ${order.orderStatus === 'pending' ? `<button class="btn btn-success btn-sm" onclick="updateOrderStatus('${order.id}', 'completed')">Mark Completed</button>` : ''}
+            ${order.orderStatus !== 'cancelled' && order.orderStatus !== 'completed' ? `<button class="btn btn-danger btn-sm" onclick="updateOrderStatus('${order.id}', 'cancelled')">Cancel</button>` : ''}
+            ${order.orderStatus === 'cancelled' || order.orderStatus === 'completed' ? `<button class="btn btn-secondary btn-sm" onclick="updateOrderStatus('${order.id}', 'pending')">Reopen</button>` : ''}
+        </div>
+    `;
+    return div;
+}
+
+window.updateOrderStatus = async function (id, status) {
+    try {
+        showLoading(true);
+        await updateDoc(doc(db, 'shopOrders', id), { orderStatus: status, updatedAt: Timestamp.now() });
+        showToast(`Order marked as ${status}`, 'success');
+    } catch (error) {
+        showToast('Could not update order', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==================== PROJECT INQUIRIES ====================
+async function loadProjectsManagement() {
+    if (projectBookingsListener) projectBookingsListener();
+    projectBookingsListener = onSnapshot(collection(db, 'projectBookings'), async () => {
+        await displayProjectBookings(currentProjectFilter);
+    });
+
+    if (projectChatsListener) projectChatsListener();
+    projectChatsListener = onSnapshot(collection(db, 'projectChats'), (snapshot) => {
+        const list = document.getElementById('projectChatsList');
+        if (!list) return;
+        list.innerHTML = snapshot.empty ? '<div class="no-chats">No active chats</div>' : '';
+
+        const chats = [];
+        snapshot.forEach(docSnap => chats.push({ ...docSnap.data(), id: docSnap.id }));
+        chats.sort((a, b) => (b.lastMessageTime?.toMillis() || 0) - (a.lastMessageTime?.toMillis() || 0));
+
+        chats.forEach(chat => {
+            list.appendChild(createProjectChatItem(chat));
+            if (chat.unreadAdmin > 0) playNotificationSound();
+        });
+
+        const unreadCount = chats.filter(c => c.unreadAdmin > 0).length;
+        setText('projectsBadge', unreadCount);
+    });
+
+    document.querySelectorAll('.projects-filter .filter-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.projects-filter .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentProjectFilter = btn.dataset.status;
+            displayProjectBookings(currentProjectFilter);
+        };
+    });
+}
+
+async function displayProjectBookings(filter = 'all') {
+    try {
+        let q = collection(db, 'projectBookings');
+        if (filter !== 'all') q = query(q, where('status', '==', filter));
+        const snapshot = await getDocs(q);
+        const list = document.getElementById('projectBookingsList');
+        if (!list) return;
+        list.innerHTML = snapshot.empty
+            ? '<p style="text-align: center; color: var(--text-tertiary); padding: 1rem;">No inquiries found.</p>'
+            : '';
+
+        const projects = [];
+        snapshot.forEach(docSnap => projects.push({ ...docSnap.data(), id: docSnap.id }));
+        projects.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+        projects.forEach(project => list.appendChild(createProjectBookingCard(project)));
+    } catch (error) {
+        console.error('Error loading inquiries:', error);
+    }
+}
+
+function createProjectBookingCard(project) {
+    const div = document.createElement('div');
+    div.className = 'order-card';
+    div.style.animation = 'fadeInUp 0.4s ease-out backwards';
+
+    const statusLabel = {
+        'pending': 'Pending',
+        'in-progress': 'In Progress',
+        'completed': 'Completed',
+        'cancelled': 'Archived'
+    }[project.status] || 'Pending';
+
+    div.innerHTML = `
+        <div class="order-header">
+            <div>
+                <p class="order-id">${escapeHtml(project.title)}</p>
+                <p class="order-details"><strong>Client:</strong> ${escapeHtml(project.customerName)} (${escapeHtml(project.customerPhone)})</p>
+            </div>
+            <span class="order-status ${project.status}">${statusLabel}</span>
+        </div>
+        <p class="order-details"><strong>Service:</strong> ${escapeHtml(project.projectTypeName)}</p>
+        <p class="order-details"><strong>Details:</strong> ${escapeHtml(project.description)}</p>
+        <p class="order-details"><strong>Location:</strong> ${escapeHtml(project.location)}</p>
+        <p class="order-details"><strong>Timeline:</strong> ${escapeHtml(project.timeline)}</p>
+        ${project.budget ? `<p class="order-details"><strong>Budget:</strong> ₦${parseFloat(project.budget).toLocaleString()}</p>` : ''}
+        <p class="order-details"><strong>Date:</strong> ${formatDate(project.createdAt)}</p>
+        <div class="order-actions">
+            ${project.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="updateProjectStatus('${project.id}', 'in-progress')">Start</button>` : ''}
+            ${project.status === 'in-progress' ? `<button class="btn btn-success btn-sm" onclick="updateProjectStatus('${project.id}', 'completed')">Complete</button>` : ''}
+            ${project.status !== 'cancelled' && project.status !== 'completed' ? `<button class="btn btn-danger btn-sm" onclick="updateProjectStatus('${project.id}', 'cancelled')">Archive</button>` : ''}
+        </div>
+    `;
+    return div;
+}
+
+window.updateProjectStatus = async function (id, status) {
+    try {
+        showLoading(true);
+        await updateDoc(doc(db, 'projectBookings', id), { status, updatedAt: Timestamp.now() });
+        showToast(`Status updated to ${status}`, 'success');
+    } catch (error) {
+        showToast('Could not update status', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+function createProjectChatItem(chat) {
+    const div = document.createElement('div');
+    div.className = `chat-item ${chat.unreadAdmin > 0 ? 'unread' : ''}`;
+    div.onclick = () => openAdminProjectChat(chat.id);
+    div.innerHTML = `
+        <h4>${escapeHtml(chat.userName)}</h4>
+        <p style="font-size: 0.8rem; color: var(--primary-color); margin: 0.25rem 0;">${escapeHtml(chat.projectTitle)}</p>
+        <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.7;">${escapeHtml(chat.lastMessage || '')}</p>
+    `;
+    return div;
+}
+
+async function openAdminProjectChat(chatId) {
+    currentProjectChatId = chatId;
+    const conversation = document.getElementById('projectChatConversation');
+    const chatDoc = await getDoc(doc(db, 'projectChats', chatId));
+    if (!chatDoc.exists()) return;
+    const chat = chatDoc.data();
+
+    conversation.innerHTML = `
+        <div style="padding: 1.25rem; border-bottom: 1px solid var(--glass-border); background: var(--glass-bg);">
+            <h3 style="margin: 0; font-size: 1.05rem;">${escapeHtml(chat.userName)}</h3>
+            <p style="margin: 0.25rem 0 0; color: var(--primary-color); font-size: 0.85rem;">${escapeHtml(chat.projectTitle)}</p>
+            <p style="margin: 0.25rem 0 0; color: var(--text-tertiary); font-size: 0.75rem;">${escapeHtml(chat.userPhone || '')}</p>
+        </div>
+        <div class="chat-messages" id="adminProjectChatMessages" style="flex: 1; overflow-y: auto; padding: 1.25rem; min-height: 320px; max-height: 400px;"></div>
+        <div style="padding: 1rem; border-top: 1px solid var(--glass-border); background: var(--glass-bg);">
+            <form id="adminProjectChatForm" style="display: flex; gap: 0.6rem;">
+                <input type="text" id="adminProjectChatInput" placeholder="Type your reply..." style="flex: 1; padding: 0.85rem 1.1rem; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 24px; color: white;">
+                <button type="submit" class="chat-send-btn" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-gradient); color: var(--secondary-dark);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </form>
+        </div>
+    `;
+
+    loadAdminProjectChatMessages(chatId);
+    await updateDoc(doc(db, 'projectChats', chatId), { unreadAdmin: 0 }).catch(() => {});
+
+    document.getElementById('adminProjectChatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('adminProjectChatInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        try {
+            await addDoc(collection(db, 'projectChats', chatId, 'messages'), {
+                sender: 'admin',
+                message,
+                timestamp: Timestamp.now()
+            });
+            await updateDoc(doc(db, 'projectChats', chatId), {
+                lastMessage: message,
+                lastMessageTime: Timestamp.now(),
+                unreadUser: 1
+            });
+            input.value = '';
+        } catch (error) {
+            showToast('Could not send message', 'error');
+        }
+    });
+}
+
+let adminChatMsgListener = null;
+function loadAdminProjectChatMessages(chatId) {
+    const container = document.getElementById('adminProjectChatMessages');
+    if (!container) return;
+    if (adminChatMsgListener) adminChatMsgListener();
+
+    adminChatMsgListener = onSnapshot(
+        query(collection(db, 'projectChats', chatId, 'messages'), orderBy('timestamp', 'asc')),
+        (snapshot) => {
+            container.innerHTML = '';
+            snapshot.forEach(docSnap => {
+                const msg = docSnap.data();
+                const div = document.createElement('div');
+                div.className = `chat-message ${msg.sender === 'admin' ? 'sent' : 'received'}`;
+                const time = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }) : '';
+                div.innerHTML = `
+                    <div class="message-bubble">
+                        ${escapeHtml(msg.message)}
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+    );
+}
+
+// ==================== USERS ====================
+async function loadUsersManagement() {
+    try {
+        const snapshot = await getDocs(collection(db, 'users'));
+        const list = document.getElementById('usersList');
+        if (!list) return;
+        list.innerHTML = snapshot.empty
+            ? '<p style="text-align: center; color: var(--text-tertiary); padding: 1rem;">No users registered yet.</p>'
+            : '';
+
+        const users = [];
+        snapshot.forEach(docSnap => users.push(docSnap.data()));
+        users.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'user-card';
+            div.innerHTML = `
+                <div class="user-card-header">
+                    <div class="user-avatar">${escapeHtml((user.name || 'U').charAt(0).toUpperCase())}</div>
+                    <div class="user-info">
+                        <h4>${escapeHtml(user.name || 'Unknown')}</h4>
+                        <p>${escapeHtml(user.phone || 'No phone')}</p>
+                    </div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.5rem 0 0;">Joined: ${formatDate(user.createdAt)}</p>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.25rem 0 0;">Last visit: ${formatDate(user.lastVisit)}</p>
+            `;
+            list.appendChild(div);
+        });
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// ==================== TESTIMONIALS ====================
+let testimonialsListener = null;
+async function loadTestimonialsManagement() {
+    const list = document.getElementById('testimonialsList');
+    if (!list) return;
+
+    document.querySelectorAll('.testimonials-filter .filter-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.testimonials-filter .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTestimonialsFilter = btn.dataset.filter;
+            renderTestimonials();
+        };
+    });
+
+    if (testimonialsListener) testimonialsListener();
+    testimonialsListener = onSnapshot(collection(db, 'testimonials'), () => renderTestimonials());
+}
+
+let allTestimonials = [];
+function renderTestimonials() {
+    const list = document.getElementById('testimonialsList');
+    if (!list) return;
+
+    if (testimonialsListener) {
+        // Get fresh data via getDocs since onSnapshot callback may be stale
+    }
+    getDocs(collection(db, 'testimonials')).then(snapshot => {
+        allTestimonials = [];
+        snapshot.forEach(docSnap => allTestimonials.push({ ...docSnap.data(), id: docSnap.id }));
+        allTestimonials.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+
+        let filtered = allTestimonials;
+        if (currentTestimonialsFilter === 'pending') {
+            filtered = allTestimonials.filter(t => !t.approved);
+        } else if (currentTestimonialsFilter === 'approved') {
+            filtered = allTestimonials.filter(t => t.approved);
+        }
+
+        list.innerHTML = filtered.length === 0
+            ? '<p style="text-align: center; color: var(--text-tertiary); padding: 1rem;">No reviews found.</p>'
+            : '';
+
+        filtered.forEach(t => {
+            const div = document.createElement('div');
+            div.className = 'testimonial-admin-card';
+            div.style.animation = 'fadeInUp 0.4s ease-out backwards';
+            const stars = '★'.repeat(t.rating) + '☆'.repeat(5 - t.rating);
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div>
+                        <h4>${escapeHtml(t.name)}</h4>
+                        ${t.company ? `<p style="font-size: 0.8rem; color: var(--primary-color); margin: 0.25rem 0;">${escapeHtml(t.company)}</p>` : ''}
+                        <div style="color: var(--primary-color); font-size: 1rem; margin: 0.5rem 0;">${stars}</div>
+                    </div>
+                    <span style="color: ${t.approved ? 'var(--success)' : 'var(--warning)'}; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${t.approved ? 'Published' : 'Pending'}</span>
+                </div>
+                <p style="font-style: italic; margin: 1rem 0; color: var(--text-secondary);">"${escapeHtml(t.text)}"</p>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">Submitted: ${formatDate(t.createdAt)}</p>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    ${!t.approved ? `<button class="btn btn-success btn-sm" onclick="approveTestimonial('${t.id}')">Approve</button>` : ''}
+                    <button class="btn btn-danger btn-sm" onclick="deleteTestimonial('${t.id}')">Delete</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }).catch(err => console.error('Error loading testimonials:', err));
+}
+
+window.approveTestimonial = async function (id) {
+    try {
+        showLoading(true);
+        await updateDoc(doc(db, 'testimonials', id), { approved: true, approvedAt: Timestamp.now() });
+        showToast('Review published', 'success');
+    } catch (error) {
+        showToast('Could not approve review', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+window.deleteTestimonial = async function (id) {
+    if (!confirm('Delete this review?')) return;
+    try {
+        showLoading(true);
+        await deleteDoc(doc(db, 'testimonials', id));
+        showToast('Review deleted', 'success');
+    } catch (error) {
+        showToast('Could not delete review', 'error');
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==================== CONTACT SETTINGS ====================
+async function loadContactSettings() {
+    try {
+        const d = await getDoc(doc(db, 'settings', 'contact'));
+        if (d.exists()) {
+            const data = d.data();
+            const phone = document.getElementById('contactPhoneInput');
+            const email = document.getElementById('contactEmailInput');
+            const addr = document.getElementById('contactAddressInput');
+            if (phone) phone.value = data.phone || '';
+            if (email) email.value = data.email || '';
+            if (addr) addr.value = data.address || '';
+        }
+    } catch (error) {
+        console.error('Error loading contact:', error);
+    }
+}
+
+document.getElementById('contactForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const phone = document.getElementById('contactPhoneInput').value.trim();
+    const email = document.getElementById('contactEmailInput').value.trim();
+    const address = document.getElementById('contactAddressInput').value.trim();
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'contact'), { phone, email, address, updatedAt: Timestamp.now() });
+        showToast('Contact info saved', 'success');
+    } catch (error) {
+        showToast('Could not save contact info', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+// ==================== SOCIAL LINKS SETTINGS ====================
+async function loadSocialSettings() {
+    try {
+        const d = await getDoc(doc(db, 'settings', 'social'));
+        if (d.exists()) {
+            const data = d.data();
+            const fields = ['socialFacebook', 'socialInstagram', 'socialTwitter', 'socialLinkedin', 'socialYoutube', 'socialTiktok'];
+            const keys = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'];
+            fields.forEach((field, i) => {
+                const el = document.getElementById(field);
+                if (el) el.value = data[keys[i]] || '';
+            });
+        }
+    } catch (error) {
+        console.error('Error loading social settings:', error);
+    }
+}
+
+document.getElementById('socialForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        facebook: document.getElementById('socialFacebook').value.trim(),
+        instagram: document.getElementById('socialInstagram').value.trim(),
+        twitter: document.getElementById('socialTwitter').value.trim(),
+        linkedin: document.getElementById('socialLinkedin').value.trim(),
+        youtube: document.getElementById('socialYoutube').value.trim(),
+        tiktok: document.getElementById('socialTiktok').value.trim(),
+        updatedAt: Timestamp.now()
+    };
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'social'), data, { merge: true });
+        showToast('Social links saved', 'success');
+    } catch (error) {
+        showToast('Could not save social links', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+// ==================== PAYMENT SETTINGS ====================
+async function loadPaymentSettings() {
+    try {
+        const d = await getDoc(doc(db, 'settings', 'payments'));
+        if (d.exists()) {
+            const data = d.data();
+            const codeEl = document.getElementById('currencyCode');
+            const symEl = document.getElementById('currencySymbol');
+            if (codeEl) codeEl.value = data.currency || 'NGN';
+            if (symEl) symEl.value = data.currencySymbol || '₦';
+
+            // PayPal
+            if (data.paypal) {
+                document.getElementById('paypalEnabled').checked = !!data.paypal.enabled;
+                document.getElementById('paypalClientId').value = data.paypal.clientId || '';
+                updateGatewayCard('paypalCard', data.paypal.enabled && data.paypal.clientId);
+            }
+            // Paystack
+            if (data.paystack) {
+                document.getElementById('paystackEnabled').checked = !!data.paystack.enabled;
+                document.getElementById('paystackPublicKey').value = data.paystack.publicKey || '';
+                updateGatewayCard('paystackCard', data.paystack.enabled && data.paystack.publicKey);
+            }
+            // Flutterwave
+            if (data.flutterwave) {
+                document.getElementById('flutterwaveEnabled').checked = !!data.flutterwave.enabled;
+                document.getElementById('flutterwavePublicKey').value = data.flutterwave.publicKey || '';
+                updateGatewayCard('flutterwaveCard', data.flutterwave.enabled && data.flutterwave.publicKey);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading payment settings:', error);
+    }
+
+    // Toggle change listeners
+    ['paypalEnabled', 'paystackEnabled', 'flutterwaveEnabled'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', async (e) => {
+            const gateway = id.replace('Enabled', '');
+            await updateGatewayToggle(gateway, e.target.checked);
+        });
+    });
+}
+
+function updateGatewayCard(cardId, isActive) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.toggle('active', !!isActive);
+}
+
+async function updateGatewayToggle(gateway, enabled) {
+    try {
+        const d = await getDoc(doc(db, 'settings', 'payments'));
+        const current = d.exists() ? d.data() : {};
+        if (!current[gateway]) current[gateway] = {};
+        current[gateway] = { ...current[gateway], enabled };
+        await setDoc(doc(db, 'settings', 'payments'), current, { merge: true });
+        showToast(`${gateway.charAt(0).toUpperCase() + gateway.slice(1)} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+
+        // Update card visual state
+        const hasCreds = gateway === 'paypal'
+            ? document.getElementById('paypalClientId').value.trim()
+            : document.getElementById(`${gateway}PublicKey`).value.trim();
+        updateGatewayCard(`${gateway}Card`, enabled && hasCreds);
+    } catch (error) {
+        showToast('Could not update setting', 'error');
+    }
+}
+
+document.getElementById('currencyForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currency = document.getElementById('currencyCode').value.trim().toUpperCase();
+    const currencySymbol = document.getElementById('currencySymbol').value.trim();
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'payments'), { currency, currencySymbol, updatedAt: Timestamp.now() }, { merge: true });
+        showToast('Currency saved', 'success');
+    } catch (error) {
+        showToast('Could not save currency', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+document.getElementById('paypalForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const clientId = document.getElementById('paypalClientId').value.trim();
+    const enabled = document.getElementById('paypalEnabled').checked;
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'payments'), {
+            paypal: { clientId, enabled },
+            updatedAt: Timestamp.now()
+        }, { merge: true });
+        showToast('PayPal settings saved', 'success');
+        updateGatewayCard('paypalCard', enabled && clientId);
+    } catch (error) {
+        showToast('Could not save PayPal settings', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+document.getElementById('paystackForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const publicKey = document.getElementById('paystackPublicKey').value.trim();
+    const enabled = document.getElementById('paystackEnabled').checked;
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'payments'), {
+            paystack: { publicKey, enabled },
+            updatedAt: Timestamp.now()
+        }, { merge: true });
+        showToast('Paystack settings saved', 'success');
+        updateGatewayCard('paystackCard', enabled && publicKey);
+    } catch (error) {
+        showToast('Could not save Paystack settings', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+document.getElementById('flutterwaveForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const publicKey = document.getElementById('flutterwavePublicKey').value.trim();
+    const enabled = document.getElementById('flutterwaveEnabled').checked;
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'payments'), {
+            flutterwave: { publicKey, enabled },
+            updatedAt: Timestamp.now()
+        }, { merge: true });
+        showToast('Flutterwave settings saved', 'success');
+        updateGatewayCard('flutterwaveCard', enabled && publicKey);
+    } catch (error) {
+        showToast('Could not save Flutterwave settings', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+// ==================== SETTINGS (SMS + Password) ====================
+async function loadSettings() {
+    try {
+        const d = await getDoc(doc(db, 'settings', 'sms'));
+        if (d.exists()) {
+            const data = d.data();
+            const phoneEl = document.getElementById('adminPhoneNumber');
+            const apiKeyEl = document.getElementById('termiiApiKey');
+            const senderEl = document.getElementById('termiiSenderId');
+            if (phoneEl) phoneEl.value = data.adminPhone || '';
+            if (apiKeyEl) apiKeyEl.value = data.termiiApiKey || '';
+            if (senderEl) senderEl.value = data.senderId || '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+document.getElementById('smsSettingsForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const adminPhone = document.getElementById('adminPhoneNumber').value.trim();
+    const termiiApiKey = document.getElementById('termiiApiKey').value.trim();
+    const senderId = document.getElementById('termiiSenderId').value.trim();
+    try {
+        showLoading(true);
+        await setDoc(doc(db, 'settings', 'sms'), { adminPhone, termiiApiKey, senderId, updatedAt: Timestamp.now() });
+        showToast('SMS settings saved', 'success');
+    } catch (error) {
+        showToast('Could not save settings', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+document.getElementById('passwordChangeForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    if (newPassword.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+    }
+    try {
+        showLoading(true);
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const cred = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, cred);
+        await updatePassword(user, newPassword);
+        showToast('Password updated successfully', 'success');
+        document.getElementById('passwordChangeForm').reset();
+    } catch (error) {
+        console.error('Password update error:', error);
+        showToast(error.code === 'auth/wrong-password' ? 'Current password is incorrect' : 'Could not update password', 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+// ==================== INITIALIZATION ====================
+async function initializeDashboard() {
+    await loadDashboard();
+}

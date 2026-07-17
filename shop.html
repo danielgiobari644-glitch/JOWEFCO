@@ -196,6 +196,39 @@
         </div>
     </footer>
 
+    <script>
+        // Suppress harmless errors from platform-injected scripts (share-modal.js, etc.)
+        (function() {
+            function isPlatformScript(src) {
+                return src && (src.indexOf('share-modal.js') !== -1 || src.indexOf('share-modal') !== -1);
+            }
+            var origError = window.onerror;
+            window.onerror = function(msg, src, line, col, err) {
+                if (isPlatformScript(src)) return true;
+                if (origError) return origError.apply(this, arguments);
+            };
+            window.addEventListener('error', function(e) {
+                if (isPlatformScript(e.filename) || (e.target && e.target.tagName === 'SCRIPT' && isPlatformScript(e.target.src))) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                }
+            }, true);
+            var origConsoleError = console.error;
+            var origConsoleWarn = console.warn;
+            console.error = function() {
+                var args = Array.prototype.slice.call(arguments);
+                var msg = args[0] != null ? String(args[0]) : '';
+                if (msg.indexOf('share-modal') !== -1 || msg.indexOf('shareModal') !== -1) return;
+                return origConsoleError.apply(console, args);
+            };
+            console.warn = function() {
+                var args = Array.prototype.slice.call(arguments);
+                var msg = args[0] != null ? String(args[0]) : '';
+                if (msg.indexOf('share-modal') !== -1 || msg.indexOf('shareModal') !== -1) return;
+                return origConsoleWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script type="module" src="shop.js"></script>
 </body>
 </html>
