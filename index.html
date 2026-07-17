@@ -1,415 +1,547 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JOWEFCO | Premium Welding & Fabrication</title>
-    <meta name="description" content="Premium welding, metal fabrication, and custom engineering services. Industrial-grade craftsmanship with 15+ years of experience.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%230A0A0F%22 stroke=%22%23D4AF37%22 stroke-width=%222%22/><path d=%22M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z%22 fill=%22%23D4AF37%22/></svg>">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Jowefco - Modern Digital Solutions">
+  <meta name="theme-color" content="#0F0E17">
+  <title>Jowefco</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="nav-container">
-            <a href="#home" class="logo" aria-label="JOWEFCO Home">
-                <div class="logo-icon-wrapper">
-                    <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
-                        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
-                        <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
-                    </svg>
-                </div>
-                <span class="logo-text">JOWEFCO</span>
-            </a>
-            <button class="nav-toggle" id="navToggle" aria-label="Open menu">
-                <span></span><span></span><span></span>
+
+  <!-- Page Loader -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-spinner"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ NAVIGATION ============ -->
+  <nav class="navbar" id="navbar">
+    <div class="container">
+      <a href="#" class="nav-logo">
+        <i class="fas fa-bolt"></i>
+        <span>Jowefco</span>
+      </a>
+
+      <div class="nav-links" id="navLinks">
+        <a href="#home" class="active">Home</a>
+        <a href="#about">About</a>
+        <a href="#features">Features</a>
+        <a href="#shop">Shop</a>
+        <a href="#testimonials">Reviews</a>
+        <a href="#contact">Contact</a>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn btn-icon btn-secondary" id="cartBtn" title="Cart" aria-label="Open cart">
+          <i class="fas fa-shopping-cart"></i>
+        </button>
+        <button class="btn btn-sm btn-primary" id="authBtn" onclick="openAuthModal()">
+          <i class="fas fa-user"></i> Sign In
+        </button>
+        <div class="nav-hamburger" id="navHamburger" role="button" aria-label="Toggle menu" tabindex="0">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav" id="mobileNav">
+    <a href="#home" onclick="closeMobileNav()">Home</a>
+    <a href="#about" onclick="closeMobileNav()">About</a>
+    <a href="#features" onclick="closeMobileNav()">Features</a>
+    <a href="#shop" onclick="closeMobileNav()">Shop</a>
+    <a href="#testimonials" onclick="closeMobileNav()">Reviews</a>
+    <a href="#contact" onclick="closeMobileNav()">Contact</a>
+  </div>
+
+  <!-- ============ HERO SECTION ============ -->
+  <section class="hero section" id="home">
+    <div class="hero-grid"></div>
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <i class="fas fa-circle"></i> Welcome to Jowefco
+        </div>
+        <h1>
+          Build Something<br>
+          <span class="highlight">Extraordinary</span>
+        </h1>
+        <p>
+          We deliver cutting-edge digital solutions that transform ideas into reality.
+          Innovation, quality, and excellence drive everything we do.
+        </p>
+        <div class="hero-buttons">
+          <a href="#shop" class="btn btn-primary btn-lg">
+            <i class="fas fa-shopping-bag"></i> Browse Shop
+          </a>
+          <a href="#contact" class="btn btn-secondary btn-lg">
+            <i class="fas fa-envelope"></i> Get in Touch
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <h3>500+</h3>
+            <p>Happy Clients</p>
+          </div>
+          <div class="hero-stat">
+            <h3>1,200+</h3>
+            <p>Products Sold</p>
+          </div>
+          <div class="hero-stat">
+            <h3>99%</h3>
+            <p>Satisfaction Rate</p>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-card-stack">
+          <div class="hero-floating-card">
+            <div class="floating-card-icon purple">
+              <i class="fas fa-rocket"></i>
+            </div>
+            <div class="floating-card-title">Fast Delivery</div>
+            <div class="floating-card-text">Quick turnaround time</div>
+          </div>
+          <div class="hero-floating-card">
+            <div class="floating-card-icon blue">
+              <i class="fas fa-shield-halved"></i>
+            </div>
+            <div class="floating-card-title">Secure Payments</div>
+            <div class="floating-card-text">Multiple gateway options</div>
+          </div>
+          <div class="hero-floating-card">
+            <div class="floating-card-icon pink">
+              <i class="fas fa-headset"></i>
+            </div>
+            <div class="floating-card-title">24/7 Support</div>
+            <div class="floating-card-text">Always here for you</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT SECTION ============ -->
+  <section class="section" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-image-wrapper animate-on-scroll">
+          <div class="about-image-box">
+            <i class="fas fa-building"></i>
+          </div>
+        </div>
+        <div class="about-content animate-on-scroll">
+          <h2>About <span style="color:var(--primary-light)">Jowefco</span></h2>
+          <p>
+            Jowefco is a forward-thinking digital solutions company committed to delivering
+            excellence in every project. We combine creativity with technology to build
+            products and experiences that make a real difference.
+          </p>
+          <p>
+            Our team of passionate professionals works tirelessly to ensure that every client
+            receives personalized attention and top-quality results. From digital products to
+            consulting services, we have the expertise to bring your vision to life.
+          </p>
+          <div class="about-features">
+            <div class="about-feature">
+              <i class="fas fa-check-circle"></i>
+              <span>Quality Assured</span>
+            </div>
+            <div class="about-feature">
+              <i class="fas fa-bolt"></i>
+              <span>Fast Delivery</span>
+            </div>
+            <div class="about-feature">
+              <i class="fas fa-lock"></i>
+              <span>Secure &amp; Safe</span>
+            </div>
+            <div class="about-feature">
+              <i class="fas fa-heart"></i>
+              <span>Made with Care</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES SECTION ============ -->
+  <section class="section" id="features" style="background: rgba(26,25,48,0.5);">
+    <div class="container">
+      <h2 class="section-title animate-on-scroll">Why Choose Us</h2>
+      <p class="section-subtitle animate-on-scroll">We provide everything you need to succeed in the digital world</p>
+      <div class="features-grid">
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon purple"><i class="fas fa-bolt"></i></div>
+          <h3>Lightning Fast</h3>
+          <p>Optimized performance ensures your experience is always smooth and responsive, no matter the device.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon blue"><i class="fas fa-shield-halved"></i></div>
+          <h3>Fully Secure</h3>
+          <p>Enterprise-grade security protects your data and transactions at every step of the process.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon pink"><i class="fas fa-mobile-screen-button"></i></div>
+          <h3>Responsive Design</h3>
+          <p>Every element adapts beautifully to any screen size, from phones to large desktops.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon green"><i class="fas fa-credit-card"></i></div>
+          <h3>Easy Payments</h3>
+          <p>Multiple payment gateway options for a seamless and flexible checkout experience.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon yellow"><i class="fas fa-star"></i></div>
+          <h3>Premium Quality</h3>
+          <p>We never compromise on quality. Every product and service meets the highest standards.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon red"><i class="fas fa-headset"></i></div>
+          <h3>24/7 Support</h3>
+          <p>Our dedicated support team is always available to help you with any questions or issues.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SHOP SECTION ============ -->
+  <section class="section" id="shop">
+    <div class="container">
+      <h2 class="section-title animate-on-scroll">Our Shop</h2>
+      <p class="section-subtitle animate-on-scroll">Browse our curated selection of premium products and services</p>
+
+      <div class="shop-filters animate-on-scroll" id="shopFilters">
+        <button class="shop-filter-btn active" data-category="all">All Items</button>
+      </div>
+
+      <div class="shop-grid" id="shopGrid">
+        <div class="shop-empty" id="shopEmpty" style="display:none;">
+          <i class="fas fa-store-slash"></i>
+          <h3>No items yet</h3>
+          <p>Check back soon for new products!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TESTIMONIALS SECTION ============ -->
+  <section class="section" id="testimonials" style="background: rgba(26,25,48,0.5);">
+    <div class="container">
+      <h2 class="section-title animate-on-scroll">What Clients Say</h2>
+      <p class="section-subtitle animate-on-scroll">Real feedback from people who trust our services</p>
+      <div class="testimonials-wrapper animate-on-scroll">
+        <div class="testimonials-track" id="testimonialsTrack">
+          <div class="testimonial-card">
+            <div class="testimonial-stars">
+              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+            </div>
+            <p class="testimonial-text">"Jowefco exceeded all my expectations. Their attention to detail and commitment to quality is unmatched. Highly recommended!"</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">AK</div>
+              <div>
+                <div class="testimonial-name">Alex Kim</div>
+                <div class="testimonial-role">Business Owner</div>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-stars">
+              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+            </div>
+            <p class="testimonial-text">"The products are top-notch and the customer service is incredible. Every interaction has been a pleasure."</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">SM</div>
+              <div>
+                <div class="testimonial-name">Sarah Mitchell</div>
+                <div class="testimonial-role">Creative Director</div>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-stars">
+              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i>
+            </div>
+            <p class="testimonial-text">"Fast, reliable, and professional. Jowefco is my go-to for all digital needs. They truly understand their clients."</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">DO</div>
+              <div>
+                <div class="testimonial-name">David Okafor</div>
+                <div class="testimonial-role">Tech Entrepreneur</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT SECTION ============ -->
+  <section class="section" id="contact">
+    <div class="container">
+      <h2 class="section-title animate-on-scroll">Get in Touch</h2>
+      <p class="section-subtitle animate-on-scroll">We would love to hear from you. Reach out anytime!</p>
+      <div class="contact-grid">
+        <div class="contact-info animate-on-scroll">
+          <div class="contact-info-card">
+            <div class="contact-info-icon"><i class="fas fa-envelope"></i></div>
+            <div>
+              <h3>Email Us</h3>
+              <p>info@jowefco.com</p>
+            </div>
+          </div>
+          <div class="contact-info-card">
+            <div class="contact-info-icon"><i class="fas fa-phone"></i></div>
+            <div>
+              <h3>Call Us</h3>
+              <p>+1 (555) 123-4567</p>
+            </div>
+          </div>
+          <div class="contact-info-card">
+            <div class="contact-info-icon"><i class="fas fa-location-dot"></i></div>
+            <div>
+              <h3>Visit Us</h3>
+              <p>123 Innovation Drive, Tech City</p>
+            </div>
+          </div>
+          <div class="contact-info-card">
+            <div class="contact-info-icon"><i class="fas fa-clock"></i></div>
+            <div>
+              <h3>Working Hours</h3>
+              <p>Monday - Friday, 9AM - 6PM</p>
+            </div>
+          </div>
+        </div>
+        <div class="contact-form-wrapper animate-on-scroll">
+          <h3><i class="fas fa-paper-plane" style="color:var(--primary-light);margin-right:8px;"></i>Send a Message</h3>
+          <form id="contactForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contactName">Your Name</label>
+                <input type="text" id="contactName" class="form-control" placeholder="John Doe" required>
+              </div>
+              <div class="form-group">
+                <label for="contactEmail">Your Email</label>
+                <input type="email" id="contactEmail" class="form-control" placeholder="john@example.com" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="contactSubject">Subject</label>
+              <input type="text" id="contactSubject" class="form-control" placeholder="How can we help?" required>
+            </div>
+            <div class="form-group">
+              <label for="contactMessage">Message</label>
+              <textarea id="contactMessage" class="form-control" placeholder="Write your message here..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">
+              <i class="fas fa-paper-plane"></i> Send Message
             </button>
-            <ul class="nav-menu" id="navMenu">
-                <li><a href="#home" class="nav-link active">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Home
-                </a></li>
-                <li><a href="#portfolio" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18" stroke-linecap="round"/></svg>
-                    Portfolio
-                </a></li>
-                <li><a href="shop.html" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Shop
-                </a></li>
-                <li><a href="projects.html" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Book Project
-                </a></li>
-                <li><a href="#testimonials" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Reviews
-                </a></li>
-                <li><a href="#contact" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Contact
-                </a></li>
-            </ul>
+          </form>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-media-container" id="heroMediaContainer"></div>
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-            <div class="hero-badge">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z"/></svg>
-                Excellence in Engineering
-            </div>
-            <h1 id="heroTitle" class="hero-title">Precision Welding & Metal Fabrication</h1>
-            <p id="heroDescription" class="hero-description">Industrial-grade craftsmanship for bespoke technical solutions. From structural steel to custom artistic metalwork, we deliver excellence in every project.</p>
-            <div class="hero-buttons">
-                <a href="#portfolio" class="btn btn-primary btn-lg">
-                    <span>Explore Portfolio</span>
-                    <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </a>
-                <a href="projects.html" class="btn btn-secondary btn-lg">
-                    <span>Request a Quote</span>
-                </a>
-            </div>
-            <div class="hero-stats">
-                <div class="stat-item">
-                    <div class="stat-number" id="projectsCount">0</div>
-                    <div class="stat-label">Projects Completed</div>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">
-                    <div class="stat-number">15+</div>
-                    <div class="stat-label">Years Experience</div>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">
-                    <div class="stat-number">100%</div>
-                    <div class="stat-label">Quality Rate</div>
-                </div>
-            </div>
-        </div>
-        <div class="slideshow-nav" id="slideshowNav" style="display: none;">
-            <button class="slideshow-btn prev" id="prevSlide" aria-label="Previous slide">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <button class="slideshow-btn next" id="nextSlide" aria-label="Next slide">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-        <div class="slideshow-dots" id="slideshowDots"></div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features-section reveal">
-        <div class="container">
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Technical Mastery</h3>
-                    <p>Advanced MIG, TIG, and Arc welding techniques for superior structural integrity and lasting results.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Precision Design</h3>
-                    <p>Detailed CAD-ready fabrication plans tailored to your exact specifications and project requirements.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Industrial Grade</h3>
-                    <p>Only high-tensile steel and premium alloys used for maximum durability and long-term reliability.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4"/></svg>
-                    </div>
-                    <h3>Client Focused</h3>
-                    <p>Direct collaboration from initial concept to final installation. Your vision, our expertise.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Portfolio Section -->
-    <section id="portfolio" class="portfolio-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Our Work</div>
-                <h2 class="section-title">Featured Projects</h2>
-                <p class="section-subtitle">A showcase of our most challenging and successful metal fabrication projects.</p>
-            </div>
-
-            <div class="portfolio-filter">
-                <button class="filter-btn active" data-filter="all">All Projects</button>
-                <button class="filter-btn" data-filter="welding">Welding</button>
-                <button class="filter-btn" data-filter="fabrication">Fabrication</button>
-                <button class="filter-btn" data-filter="custom">Custom Work</button>
-            </div>
-
-            <div class="portfolio-grid" id="portfolioGrid">
-                <div class="loading-message">Loading portfolio...</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta-section reveal">
-        <div class="container">
-            <div class="cta-content">
-                <div class="cta-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M3 22V7l9-5 9 5v15M9 22v-5h6v5M9 11h.01M15 11h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <h2>Bring Your Vision to Life</h2>
-                <p>Whether it's a large-scale industrial structure or a custom residential project, we deliver excellence on time and on budget.</p>
-                <a href="projects.html" class="btn btn-primary btn-lg">
-                    <span>Start Your Project</span>
-                    <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section id="testimonials" class="testimonials-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Client Reviews</div>
-                <h2 class="section-title">What Clients Say</h2>
-                <p class="section-subtitle">Real feedback from industry leaders who trusted us with their projects.</p>
-            </div>
-
-            <div id="testimonialsGrid" class="testimonials-grid">
-                <div class="loading-message">Loading reviews...</div>
-            </div>
-
-            <div class="testimonial-cta">
-                <p>Have we completed a project for you? We'd love to hear your feedback.</p>
-                <button class="btn btn-primary" id="addTestimonialBtn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Submit a Review
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="contact-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Get In Touch</div>
-                <h2 class="section-title">Contact Us</h2>
-                <p class="section-subtitle">Reach out to our team for consultations, quotes, or any questions.</p>
-            </div>
-            <div class="contact-grid">
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Phone</h3>
-                    <p id="contactPhone">Loading...</p>
-                    <a href="#" class="contact-link" id="callLink">
-                        Call Now
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Email</h3>
-                    <p id="contactEmail">Loading...</p>
-                    <a href="#" class="contact-link" id="emailLink">
-                        Send Email
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3"/></svg>
-                    </div>
-                    <h3>Workshop</h3>
-                    <p id="contactAddress">Loading...</p>
-                    <a href="#" class="contact-link" id="locationLink">
-                        View on Map
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Portfolio Modal -->
-    <div id="portfolioModal" class="modal">
-        <div class="modal-content portfolio-modal">
-            <button class="modal-close" aria-label="Close">&times;</button>
-            <div class="portfolio-modal-container">
-                <div class="portfolio-modal-media" id="portfolioModalMedia"></div>
-                <div class="portfolio-modal-details">
-                    <div class="portfolio-modal-category" id="portfolioModalCategory"></div>
-                    <h2 id="portfolioModalTitle"></h2>
-                    <p id="portfolioModalDescription"></p>
-                    <div class="portfolio-modal-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">Completed:</span>
-                            <span class="meta-value" id="portfolioModalDate"></span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Service:</span>
-                            <span class="meta-value" id="portfolioModalType"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+  </section>
 
-    <!-- User Registration Modal -->
-    <div id="userRegistrationModal" class="modal">
-        <div class="modal-content registration-modal">
-            <div class="registration-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h2>Welcome to JOWEFCO</h2>
-            <p>Please share your contact details so we can serve you better.</p>
-            <form id="userRegistrationForm">
-                <div class="form-group">
-                    <label for="regName">Full Name</label>
-                    <input type="text" id="regName" placeholder="e.g. John Doe" required>
-                </div>
-                <div class="form-group">
-                    <label for="regPhone">Phone Number</label>
-                    <input type="tel" id="regPhone" placeholder="e.g. 08012345678" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Continue</button>
-            </form>
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="nav-logo">
+            <i class="fas fa-bolt"></i>
+            <span>Jowefco</span>
+          </a>
+          <p>Delivering cutting-edge digital solutions that transform ideas into reality. Innovation and excellence in every project.</p>
+          <div class="social-links" id="footerSocialLinks">
+            <a href="#" class="social-link facebook" aria-label="Facebook" data-platform="facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" class="social-link twitter" aria-label="Twitter" data-platform="twitter"><i class="fab fa-x-twitter"></i></a>
+            <a href="#" class="social-link instagram" aria-label="Instagram" data-platform="instagram"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="social-link linkedin" aria-label="LinkedIn" data-platform="linkedin"><i class="fab fa-linkedin-in"></i></a>
+            <a href="#" class="social-link youtube" aria-label="YouTube" data-platform="youtube"><i class="fab fa-youtube"></i></a>
+            <a href="#" class="social-link whatsapp" aria-label="WhatsApp" data-platform="whatsapp"><i class="fab fa-whatsapp"></i></a>
+            <a href="#" class="social-link telegram" aria-label="Telegram" data-platform="telegram"><i class="fab fa-telegram-plane"></i></a>
+            <a href="#" class="social-link tiktok" aria-label="TikTok" data-platform="tiktok"><i class="fab fa-tiktok"></i></a>
+          </div>
         </div>
-    </div>
-
-    <!-- Testimonial Modal -->
-    <div id="testimonialModal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close" aria-label="Close">&times;</button>
-            <h2>Share Your Review</h2>
-            <p>Your feedback helps us improve and helps others choose us with confidence.</p>
-            <form id="testimonialForm">
-                <div class="form-group">
-                    <label for="testimonialName">Full Name</label>
-                    <input type="text" id="testimonialName" placeholder="Your name" required>
-                </div>
-                <div class="form-group">
-                    <label for="testimonialCompany">Company / Project Name (Optional)</label>
-                    <input type="text" id="testimonialCompany" placeholder="e.g. Industrial Plant X">
-                </div>
-                <div class="form-group">
-                    <label>Service Rating</label>
-                    <div class="star-rating" id="starRating">
-                        <span class="star" data-rating="1">★</span>
-                        <span class="star" data-rating="2">★</span>
-                        <span class="star" data-rating="3">★</span>
-                        <span class="star" data-rating="4">★</span>
-                        <span class="star" data-rating="5">★</span>
-                    </div>
-                    <input type="hidden" id="testimonialRating" value="5">
-                </div>
-                <div class="form-group">
-                    <label for="testimonialText">Your Feedback</label>
-                    <textarea id="testimonialText" rows="5" placeholder="Tell us about your experience working with us..." required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Submit Review</button>
-            </form>
+        <div>
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="#home"><i class="fas fa-chevron-right"></i> Home</a></li>
+            <li><a href="#about"><i class="fas fa-chevron-right"></i> About Us</a></li>
+            <li><a href="#shop"><i class="fas fa-chevron-right"></i> Shop</a></li>
+            <li><a href="#contact"><i class="fas fa-chevron-right"></i> Contact</a></li>
+          </ul>
         </div>
-    </div>
-
-    <!-- WhatsApp Floating Button -->
-    <a href="#" id="whatsappBtn" class="whatsapp-float" title="Chat with us on WhatsApp" aria-label="WhatsApp">
-        <svg viewBox="0 0 32 32" fill="currentColor">
-            <path d="M16 0C7.164 0 0 7.163 0 16c0 2.825.738 5.487 2.031 7.794L.05 31.95l8.331-2.019A15.923 15.923 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333c-2.387 0-4.713-.638-6.756-1.85l-.481-.287-5.006 1.213 1.238-4.888-.313-.5A13.259 13.259 0 012.667 16c0-7.35 5.983-13.333 13.333-13.333S29.333 8.65 29.333 16 23.35 29.333 16 29.333z"/>
-            <path d="M23.094 19.45c-.4-.2-2.369-1.169-2.737-1.3-.369-.131-.637-.2-.906.2-.269.4-1.038 1.3-1.275 1.569-.237.269-.475.3-.875.1-.4-.2-1.688-.619-3.213-1.975-1.188-1.056-1.988-2.362-2.219-2.762-.231-.4-.025-.619.175-.819.181-.181.4-.475.6-.712.2-.238.269-.4.4-.669.131-.269.069-.5-.031-.7-.1-.2-.906-2.181-1.244-2.987-.331-.794-.662-.688-.906-.7-.237-.012-.506-.012-.775-.012s-.706.1-1.075.5c-.369.4-1.406 1.375-1.406 3.35s1.444 3.888 1.644 4.156c.2.269 2.819 4.306 6.831 6.038.956.413 1.7.656 2.281.844.962.306 1.837.262 2.531.162.769-.112 2.369-.969 2.706-1.906.337-.938.337-1.738.237-1.906-.1-.169-.369-.269-.769-.469z"/>
-        </svg>
-    </a>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <p>Please wait...</p>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <div class="footer-logo">
-                        <div class="logo-icon-wrapper">
-                            <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
-                                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
-                                <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
-                            </svg>
-                        </div>
-                        <span class="logo-text">JOWEFCO</span>
-                    </div>
-                    <p class="footer-tagline">Precision engineering and technical mastery since 2011.</p>
-                    <div class="footer-social" id="footerSocial">
-                        <!-- Social links loaded dynamically from Firebase -->
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="#home">Home</a></li>
-                        <li><a href="#portfolio">Portfolio</a></li>
-                        <li><a href="shop.html">Shop</a></li>
-                        <li><a href="projects.html">Book Project</a></li>
-                        <li><a href="#contact">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Our Services</h4>
-                    <ul class="footer-links">
-                        <li><a href="projects.html">Structural Welding</a></li>
-                        <li><a href="projects.html">Precision Fabrication</a></li>
-                        <li><a href="projects.html">Custom Metalwork</a></li>
-                        <li><a href="projects.html">Industrial Repairs</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Info</h4>
-                    <ul class="footer-contact" id="footerContact">
-                        <li id="footerPhone">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span>Loading...</span>
-                        </li>
-                        <li id="footerEmail">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span>Loading...</span>
-                        </li>
-                        <li id="footerAddress">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3"/></svg>
-                            <span>Loading...</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 JOWEFCO Technical Services. All rights reserved.</p>
-                <p class="footer-credits">Engineered for Excellence</p>
-            </div>
+        <div>
+          <h4 class="footer-heading">Services</h4>
+          <ul class="footer-links">
+            <li><a href="#features"><i class="fas fa-chevron-right"></i> Web Development</a></li>
+            <li><a href="#features"><i class="fas fa-chevron-right"></i> Digital Products</a></li>
+            <li><a href="#features"><i class="fas fa-chevron-right"></i> Consulting</a></li>
+            <li><a href="#features"><i class="fas fa-chevron-right"></i> Support</a></li>
+          </ul>
         </div>
-    </footer>
+        <div>
+          <h4 class="footer-heading">Legal</h4>
+          <ul class="footer-links">
+            <li><a href="#"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
+            <li><a href="#"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
+            <li><a href="#"><i class="fas fa-chevron-right"></i> Refund Policy</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Jowefco. All rights reserved.</p>
+        <p>Crafted with <i class="fas fa-heart" style="color:var(--secondary);"></i> by Jowefco Team</p>
+      </div>
+    </div>
+  </footer>
 
-    <script type="module" src="app.js"></script>
+  <!-- ============ AUTH MODAL ============ -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal" style="position:relative;">
+      <button class="modal-close" onclick="closeAuthModal()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      <div class="modal-header">
+        <h2>Welcome Back</h2>
+        <p>Sign in to your account or create a new one</p>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab active" onclick="switchAuthTab('login')">Sign In</div>
+        <div class="modal-tab" onclick="switchAuthTab('register')">Sign Up</div>
+      </div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+          <i class="fas fa-right-to-bracket"></i> Sign In
+        </button>
+        <div class="modal-footer">
+          <p>Don't have an account? <a onclick="switchAuthTab('register')">Sign up</a></p>
+        </div>
+      </form>
+      <form id="registerForm" style="display:none;" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" class="form-control" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" class="form-control" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input type="password" id="regPassword" class="form-control" placeholder="Min 6 characters" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+          <i class="fas fa-user-plus"></i> Create Account
+        </button>
+        <div class="modal-footer">
+          <p>Already have an account? <a onclick="switchAuthTab('login')">Sign in</a></p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ ITEM DETAIL MODAL ============ -->
+  <div class="modal-overlay" id="itemDetailModal">
+    <div class="modal item-detail-modal" style="position:relative;">
+      <button class="modal-close" onclick="closeItemDetail()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      <div class="item-detail-image" id="itemDetailImage"><i class="fas fa-box-open"></i></div>
+      <div class="item-detail-category" id="itemDetailCategory"></div>
+      <div class="item-detail-title" id="itemDetailTitle"></div>
+      <div class="item-detail-desc" id="itemDetailDesc"></div>
+      <div class="item-detail-price" id="itemDetailPrice"></div>
+      <div class="item-detail-actions">
+        <button class="btn btn-primary btn-lg" id="itemDetailAddCart" onclick="addToCartFromDetail()">
+          <i class="fas fa-cart-plus"></i> Add to Cart
+        </button>
+        <button class="btn btn-accent btn-lg" id="itemDetailBuyNow" onclick="buyNowFromDetail()">
+          <i class="fas fa-bolt"></i> Buy Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CHECKOUT MODAL ============ -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal checkout-modal" style="position:relative;">
+      <button class="modal-close" onclick="closeCheckout()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      <h2><i class="fas fa-credit-card" style="color:var(--primary-light);"></i> Checkout</h2>
+      <div class="checkout-summary" id="checkoutSummary"></div>
+      <div class="payment-gateway-select">
+        <label style="font-weight:600;margin-bottom:12px;display:block;">Select Payment Method</label>
+        <div class="payment-gateway-options" id="paymentGatewayOptions"></div>
+      </div>
+      <div class="checkout-warning" id="checkoutWarning" style="display:none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>No payment gateway has been configured yet. Please contact support or wait for the admin to set up a payment method.</span>
+      </div>
+      <button class="btn btn-accent btn-lg" id="checkoutPayBtn" style="width:100%;" onclick="processPayment()" disabled>
+        <i class="fas fa-lock"></i> Proceed to Payment
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ CART DRAWER ============ -->
+  <div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-header">
+      <h2><i class="fas fa-shopping-cart"></i> Your Cart <span class="cart-count" id="cartDrawerCount">0</span></h2>
+      <button class="btn btn-icon btn-secondary" onclick="closeCart()" aria-label="Close cart">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
+    <div class="cart-drawer-body" id="cartDrawerBody">
+      <div class="cart-empty" id="cartEmpty">
+        <i class="fas fa-cart-shopping"></i>
+        <h3>Your cart is empty</h3>
+        <p>Add some items to get started!</p>
+      </div>
+    </div>
+    <div class="cart-drawer-footer" id="cartDrawerFooter" style="display:none;">
+      <div class="cart-total">
+        <span>Total</span>
+        <span class="price" id="cartTotalPrice">$0.00</span>
+      </div>
+      <button class="btn btn-accent btn-lg" style="width:100%;" onclick="openCheckout()">
+        <i class="fas fa-credit-card"></i> Checkout
+      </button>
+    </div>
+  </div>
+
+  <!-- Scroll to Top -->
+  <button class="scroll-top" id="scrollTop" aria-label="Scroll to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <i class="fas fa-arrow-up"></i>
+  </button>
+
+  <!-- Scripts (flat - same folder) -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
