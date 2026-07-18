@@ -26,6 +26,19 @@ let currentOrdersFilter = 'all';
 let currentTestimonialsFilter = 'pending';
 let currentProjectChatId = null;
 
+// One-time warning for permission errors (rules not deployed).
+let _permissionsWarned = false;
+function warnPermissionsOnce(error) {
+    if (_permissionsWarned) return;
+    if (error?.code === 'permission-denied') {
+        _permissionsWarned = true;
+        console.warn(
+            '%c[JOWEFCO Admin] Firestore permissions denied — deploy rules: firebase deploy --only firestore:rules',
+            'color: #e8a735; font-weight: bold;'
+        );
+    }
+}
+
 // ==================== UTILITY FUNCTIONS ====================
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -232,7 +245,7 @@ async function loadDashboard() {
             }
         }
     } catch (error) {
-        console.error('Error loading dashboard:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -254,7 +267,7 @@ async function loadHeroSettings() {
             displayHeroMediaList(data.media || []);
         }
     } catch (error) {
-        console.error('Error loading hero settings:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -375,7 +388,7 @@ async function loadPortfolioManagement() {
         });
         items.forEach(item => list.appendChild(createPortfolioItemCard(item)));
     } catch (error) {
-        console.error('Error loading portfolio:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -465,7 +478,7 @@ async function loadShopManagement() {
         });
         items.forEach(item => list.appendChild(createProductCard(item)));
     } catch (error) {
-        console.error('Error loading shop items:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -598,7 +611,7 @@ async function displayOrders(filter = 'all') {
         });
         orders.forEach(order => list.appendChild(createOrderCard(order)));
     } catch (error) {
-        console.error('Error loading orders:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -701,7 +714,7 @@ async function displayProjectBookings(filter = 'all') {
         projects.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
         projects.forEach(project => list.appendChild(createProjectBookingCard(project)));
     } catch (error) {
-        console.error('Error loading inquiries:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -878,7 +891,7 @@ async function loadUsersManagement() {
             list.appendChild(div);
         });
     } catch (error) {
-        console.error('Error loading users:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -952,7 +965,7 @@ function renderTestimonials() {
             `;
             list.appendChild(div);
         });
-    }).catch(err => console.error('Error loading testimonials:', err));
+    }).catch(err => warnPermissionsOnce(err));
 }
 
 window.approveTestimonial = async function (id) {
@@ -994,7 +1007,7 @@ async function loadContactSettings() {
             if (addr) addr.value = data.address || '';
         }
     } catch (error) {
-        console.error('Error loading contact:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -1028,7 +1041,7 @@ async function loadSocialSettings() {
             });
         }
     } catch (error) {
-        console.error('Error loading social settings:', error);
+        warnPermissionsOnce(error);
     }
 }
 
@@ -1085,7 +1098,7 @@ async function loadPaymentSettings() {
             }
         }
     } catch (error) {
-        console.error('Error loading payment settings:', error);
+        warnPermissionsOnce(error);
     }
 
     // Toggle change listeners
@@ -1208,7 +1221,7 @@ async function loadSettings() {
             if (senderEl) senderEl.value = data.senderId || '';
         }
     } catch (error) {
-        console.error('Error loading settings:', error);
+        warnPermissionsOnce(error);
     }
 }
 

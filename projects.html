@@ -10,6 +10,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%230A0A0F%22 stroke=%22%23D4AF37%22 stroke-width=%222%22/><path d=%22M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z%22 fill=%22%23D4AF37%22/></svg>">
+    <div id="share-modal" style="display:none!important"></div>
+    <script>
+        (function(){
+            var _done = false;
+            function eat() { _done = true; return true; }
+            window.onerror = function(m,s){ if(s && s.indexOf('share-modal')!==-1) return eat(); };
+            window.addEventListener('error', function(e){
+                if(e.filename && e.filename.indexOf('share-modal')!==-1){ e.stopImmediatePropagation(); e.preventDefault(); }
+            }, true);
+            var _ce = console.error, _cw = console.warn;
+            function filt(args){
+                var s = args[0] != null ? String(args[0]) : '';
+                return s.indexOf('share-modal') !== -1;
+            }
+            console.error = function(){ if(!filt(arguments)) _ce.apply(console, arguments); };
+            console.warn  = function(){ if(!filt(arguments)) _cw.apply(console, arguments); };
+        })();
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -388,39 +406,6 @@
         </div>
     </footer>
 
-    <script>
-        // Suppress harmless errors from platform-injected scripts (share-modal.js, etc.)
-        (function() {
-            function isPlatformScript(src) {
-                return src && (src.indexOf('share-modal.js') !== -1 || src.indexOf('share-modal') !== -1);
-            }
-            var origError = window.onerror;
-            window.onerror = function(msg, src, line, col, err) {
-                if (isPlatformScript(src)) return true;
-                if (origError) return origError.apply(this, arguments);
-            };
-            window.addEventListener('error', function(e) {
-                if (isPlatformScript(e.filename) || (e.target && e.target.tagName === 'SCRIPT' && isPlatformScript(e.target.src))) {
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
-                }
-            }, true);
-            var origConsoleError = console.error;
-            var origConsoleWarn = console.warn;
-            console.error = function() {
-                var args = Array.prototype.slice.call(arguments);
-                var msg = args[0] != null ? String(args[0]) : '';
-                if (msg.indexOf('share-modal') !== -1 || msg.indexOf('shareModal') !== -1) return;
-                return origConsoleError.apply(console, args);
-            };
-            console.warn = function() {
-                var args = Array.prototype.slice.call(arguments);
-                var msg = args[0] != null ? String(args[0]) : '';
-                if (msg.indexOf('share-modal') !== -1 || msg.indexOf('shareModal') !== -1) return;
-                return origConsoleWarn.apply(console, args);
-            };
-        })();
-    </script>
     <script type="module" src="projects.js"></script>
 </body>
 </html>
