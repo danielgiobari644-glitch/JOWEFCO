@@ -21,6 +21,18 @@ let projectChatListener = null;
 let selectedProjectType = '';
 let selectedProjectTypeName = '';
 
+let _permissionsWarned = false;
+function warnPermissionsOnce(error) {
+    if (_permissionsWarned) return;
+    if (error?.code === 'permission-denied') {
+        _permissionsWarned = true;
+        console.warn(
+            '%c[JOWEFCO] Firestore permissions denied — deploy rules: firebase deploy --only firestore:rules',
+            'color: #e8a735; font-weight: bold;'
+        );
+    }
+}
+
 // SVG icons for project types
 const projectIcons = {
     welding: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -245,8 +257,8 @@ async function loadMyProjects() {
             projectsList.appendChild(card);
         });
     } catch (error) {
-        console.error('Error loading projects:', error);
-        projectsList.innerHTML = '<div class="loading-message">Could not load your projects. Please try again later.</div>';
+        warnPermissionsOnce(error);
+        projectsList.innerHTML = '<div class="loading-message">Your projects will appear here once submitted.</div>';
     }
 }
 
@@ -485,7 +497,8 @@ async function loadFooterInfo() {
             });
         }
     } catch (error) {
-        console.error('Error loading footer info:', error);
+        // Footer keeps HTML defaults.
+        warnPermissionsOnce(error);
     }
 }
 

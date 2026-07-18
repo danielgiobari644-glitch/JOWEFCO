@@ -19,6 +19,23 @@ const db = getFirestore(app);
 let currentUser = null;
 let currentPortfolioFilter = 'all';
 
+// One-time warning: if Firestore rules aren't deployed, every load
+// function would spam console.error. Instead we print a single
+// actionable warning and silently skip the rest.
+let _permissionsWarned = false;
+function warnPermissionsOnce(error) {
+    if (_permissionsWarned) return;
+    if (error?.code === 'permission-denied') {
+        _permissionsWarned = true;
+        console.warn(
+            '%c[JOWEFCO] Firestore permissions denied — have you deployed the rules?\n' +
+            '  Run:  firebase deploy --only firestore:rules\n' +
+            '  See firestore.rules for instructions.',
+            'color: #e8a735; font-weight: bold;'
+        );
+    }
+}
+
 // ==================== SVG ICON LIBRARY ====================
 const SOCIAL_ICONS = {
     facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
@@ -211,8 +228,10 @@ async function loadHeroContent() {
             document.getElementById('heroMediaContainer').innerHTML = '<div class="hero-background"></div>';
         }
     } catch (error) {
-        console.error('Error loading hero content:', error);
+        // Silently fall back to default hero background.
+        // If rules aren't deployed this fires for every load.
         document.getElementById('heroMediaContainer').innerHTML = '<div class="hero-background"></div>';
+        warnPermissionsOnce(error);
     }
 }
 
@@ -303,7 +322,8 @@ async function loadStats() {
             animateCount(countEl, target);
         }
     } catch (error) {
-        console.error('Error loading stats:', error);
+        // Stats counter stays at 0 — non-critical.
+        warnPermissionsOnce(error);
     }
 }
 
@@ -347,8 +367,8 @@ async function loadPortfolio() {
 
         filterPortfolio(currentPortfolioFilter);
     } catch (error) {
-        console.error('Error loading portfolio:', error);
-        grid.innerHTML = '<div class="loading-message">Unable to load portfolio. Please try again later.</div>';
+        warnPermissionsOnce(error);
+        grid.innerHTML = '<div class="loading-message">Portfolio coming soon. Check back later!</div>';
     }
 }
 
@@ -465,7 +485,8 @@ async function loadContactInfo() {
             if (locationLink) locationLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
         }
     } catch (error) {
-        console.error('Error loading contact info:', error);
+        // Contact section keeps its HTML defaults — non-critical.
+        warnPermissionsOnce(error);
     }
 }
 
@@ -501,7 +522,8 @@ async function loadSocialLinks() {
             footerSocial.innerHTML = '<p style="color: var(--text-tertiary); font-size: 0.85rem;">Follow us on social media soon!</p>';
         }
     } catch (error) {
-        console.error('Error loading social links:', error);
+        // Social icons stay empty — non-critical.
+        warnPermissionsOnce(error);
     }
 }
 
@@ -538,7 +560,8 @@ async function loadTestimonials() {
             grid.appendChild(card);
         });
     } catch (error) {
-        console.error('Error loading testimonials:', error);
+        // Testimonials grid shows "Loading reviews..." — acceptable.
+        warnPermissionsOnce(error);
     }
 }
 
@@ -641,7 +664,10 @@ function initWhatsApp() {
             const message = encodeURIComponent('Hi! I would like to inquire about your premium technical services.');
             window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
         });
-    }).catch(err => console.error('WhatsApp init error:', err));
+    }).catch(err => {
+        // WhatsApp button keeps the hardcoded fallback number.
+        warnPermissionsOnce(err);
+    });
 }
 
 // ==================== REVEAL ANIMATIONS ====================

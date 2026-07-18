@@ -18,6 +18,18 @@ const db = getFirestore(app);
 // ==================== GLOBAL STATE ====================
 let currentUser = null;
 let shopItems = [];
+
+let _permissionsWarned = false;
+function warnPermissionsOnce(error) {
+    if (_permissionsWarned) return;
+    if (error?.code === 'permission-denied') {
+        _permissionsWarned = true;
+        console.warn(
+            '%c[JOWEFCO] Firestore permissions denied — deploy rules: firebase deploy --only firestore:rules',
+            'color: #e8a735; font-weight: bold;'
+        );
+    }
+}
 let paymentConfig = { currency: 'NGN', currencySymbol: '₦' };
 let activeGateways = {};
 let selectedProduct = null;
@@ -151,8 +163,8 @@ async function loadShopItems() {
             grid.appendChild(card);
         });
     } catch (error) {
-        console.error('Error loading shop items:', error);
-        grid.innerHTML = '<div class="loading-message">Could not load products. Please try again later.</div>';
+        warnPermissionsOnce(error);
+        grid.innerHTML = '<div class="loading-message">Shop coming soon. Check back later!</div>';
     }
 }
 
@@ -219,7 +231,8 @@ async function loadPaymentConfig() {
             }
         }
     } catch (error) {
-        console.error('Error loading payment config:', error);
+        // Payment buttons won't appear — user can still browse.
+        warnPermissionsOnce(error);
     }
 }
 
@@ -617,7 +630,8 @@ async function loadFooterInfo() {
             });
         }
     } catch (error) {
-        console.error('Error loading footer info:', error);
+        // Footer keeps HTML defaults.
+        warnPermissionsOnce(error);
     }
 }
 

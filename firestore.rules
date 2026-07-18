@@ -3,6 +3,24 @@ rules_version = '2';
 // ====================================================================
 // JOWEFCO — Firestore Security Rules
 // ====================================================================
+//
+// ⚠️  ACTION REQUIRED: DEPLOY THESE RULES
+//
+//   If you see "Missing or insufficient permissions" errors in the
+//   browser console, it means these rules have NOT been published yet.
+//
+//   To deploy (one-time setup):
+//
+//     1. Install Firebase CLI:   npm install -g firebase-tools
+//     2. Log in:                 firebase login
+//     3. Initialise (if needed): firebase init firestore
+//        — select "jowefco" project when prompted
+//     4. Deploy:                 firebase deploy --only firestore:rules
+//
+//   After step 4 the public pages will load data correctly.
+//   You only need to do this once (or after editing this file).
+//
+// ====================================================================
 // App behavior:
 //   • Public visitors are ANONYMOUS (no Firebase Auth).
 //     They get a custom `user_...` id stored in localStorage.
@@ -211,7 +229,7 @@ service cloud.firestore {
     match /settings/{docId} {
       // Public can read all settings EXCEPT the SMS doc (which contains
       // the Termii API key). The SMS doc is admin-only.
-      allow read: if docId == 'sms' ? isAdmin() : true;
+      allow read: if docId != 'sms';
       allow write: if isAdmin();
     }
 
