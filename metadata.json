@@ -1,5 +1,18 @@
 {
-  "name": "JOWEFCO Premium Technical Services",
-  "description": "Premium welding, fabrication, and technical services for industrial and custom projects.",
+  "name": "JOWEFCO Technical Services",
+  "description": "JOWEFCO Technical Services provides professional welding, metal fabrication, structural steel, custom metalwork, technical and engineering services in Port Harcourt, Rivers State, Nigeria.",
+  "short_name": "JOWEFCO",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#003B7A",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/logo.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any maskable" },
+    { "src": "/logo.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any maskable" }
+  ],
   "requestFramePermissions": []
 }

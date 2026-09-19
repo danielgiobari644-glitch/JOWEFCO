@@ -1,649 +1,369 @@
-// ==================== FIREBASE CONFIGURATION ====================
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, doc, getDoc, setDoc, Timestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+// ====================================================================
+// JOWEFCO SHOP.JS
+// Full shop functionality with cart and order-request checkout.
+// Uses existing Firestore `shopItems` (catalog) and `shopOrders` collections.
+// Orders are created with paymentStatus='pending' and orderStatus='requested'
+//  — admin confirms stock + total, then sends payment instructions.
+// (Existing rules require paymentStatus='paid' for single-product orders;
+//  we extend the rules to also accept cart-based orders with 'pending' status
+//  because payment is collected manually after confirmation. See updated
+//  firestore.rules.)
+// ====================================================================
 
-const firebaseConfig = {
-    apiKey: "AIzaSyB0KdLj5TnV_9k0jWFz_-2kHSAYHyG8dq0",
-    authDomain: "jowefco.firebaseapp.com",
-    projectId: "jowefco",
-    storageBucket: "jowefco.firebasestorage.app",
-    messagingSenderId: "698975205460",
-    appId: "1:698975205460:web:1e7539da1fc748932115c1",
-    measurementId: "G-5NE7NQQBQE"
-};
+import {
+    collection, getDocs, doc, addDoc, Timestamp
+} from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = window.JOWEFCO.db;
+const utils = window.JOWEFCO.utils;
+const warn = window.JOWEFCO.warnPermissionsOnce;
 
-// ==================== GLOBAL STATE ====================
-let currentUser = null;
-let shopItems = [];
+let allProducts = [];
+let currentFilter = { search: '', category: '', sort: 'newest' };
 
-let _permissionsWarned = false;
-function warnPermissionsOnce(error) {
-    if (_permissionsWarned) return;
-    if (error?.code === 'permission-denied') {
-        _permissionsWarned = true;
-        console.warn(
-            '%c[JOWEFCO] Firestore permissions denied — deploy rules: firebase deploy --only firestore:rules',
-            'color: #e8a735; font-weight: bold;'
-        );
-    }
-}
-let paymentConfig = { currency: 'NGN', currencySymbol: '₦' };
-let activeGateways = {};
-let selectedProduct = null;
-let selectedPaymentMethod = null;
-let paypalSdkLoaded = false;
-
-// ==================== SVG ICON LIBRARY ====================
-const SOCIAL_ICONS = {
-    facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
-    instagram: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
-    twitter: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
-    linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
-    youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
-    tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>'
-};
-
-const PAYMENT_ICONS = {
-    paypal: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm18.804-14.59c-.077-.473-.087-.91-.18-1.295C24.062.901 19.39 0 14.7 0H5.275a.641.641 0 0 0-.633.74L7.99 21.997a.641.641 0 0 0 .633.541h4.55a.641.641 0 0 0 .633-.74l-.65-4.124a.641.641 0 0 1 .633-.74h1.5c4.65 0 7.53-1.873 8.49-5.864.077-.32.137-.654.18-1z"/></svg>',
-    paystack: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.36 17.06l-3.49-3.49a.996.996 0 0 1 0-1.41l3.49-3.49c.45-.45 1.21-.13 1.21.51v7.36c0 .64-.76.96-1.21.51z" opacity=".4"/><path d="M7.7 11.46l-3.49 3.49c-.45.45-1.21.13-1.21-.51V7.08c0-.64.76-.96 1.21-.51l3.49 3.49a.996.996 0 0 1 0 1.4z" opacity=".7"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"/></svg>',
-    flutterwave: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.94 8.6v2.32h4.18c.43 0 .86.05 1.27.16 1.43.36 2.16 1.45 2.16 3.02 0 .27-.02.51-.06.74-.36 2.04-1.85 3.13-4.4 3.13h-3.42v-3.32h3.42c.74 0 1.27-.06 1.6-.18.5-.18.74-.55.74-1.1 0-.3-.07-.54-.21-.72-.16-.21-.4-.34-.74-.4-.27-.04-.59-.07-.96-.07h-2.07c-.43 0-.86-.05-1.27-.16-1.43-.36-2.16-1.45-2.16-3.02 0-.27.02-.51.06-.74.36-2.04 1.85-3.13 4.4-3.13h6.7v3.32h-6.7c-.74 0-1.27.06-1.6.18-.5.18-.74.55-.74 1.1 0 .3.07.54.21.72.16.21.4.34.74.4.27.04.59.07.96.07h2.07c.43 0 .86.05 1.27.16 1.43.36 2.16 1.45 2.16 3.02 0 .27-.02.51-.06.74-.36 2.04-1.85 3.13-4.4 3.13H8.7V8.6h6.24z"/></svg>'
-};
-
-// ==================== UTILITY FUNCTIONS ====================
-function getUserFromStorage() {
-    const userId = localStorage.getItem('jowefco_user_id');
-    const userName = localStorage.getItem('jowefco_user_name');
-    const userPhone = localStorage.getItem('jowefco_user_phone');
-    if (userId && userName && userPhone) {
-        return { id: userId, name: userName, phone: userPhone };
-    }
-    return null;
-}
-
-function generateUserId() {
-    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-function saveUserToStorage(user) {
-    localStorage.setItem('jowefco_user_id', user.id);
-    localStorage.setItem('jowefco_user_name', user.name);
-    localStorage.setItem('jowefco_user_phone', user.phone);
-}
-
-async function registerUserInFirestore(user) {
-    try {
-        await setDoc(doc(db, 'users', user.id), {
-            id: user.id,
-            name: user.name,
-            phone: user.phone,
-            createdAt: Timestamp.now(),
-            lastVisit: Timestamp.now()
-        }, { merge: true });
-    } catch (error) {
-        console.error('Error registering user:', error);
-    }
-}
-
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.className = `toast show ${type}`;
-    setTimeout(() => toast.classList.remove('show'), 3500);
-}
-
-function showLoading(show = true, message = 'Processing payment...') {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = show ? 'flex' : 'none';
-        const p = overlay.querySelector('p');
-        if (p) p.textContent = message;
-    }
-}
-
-function formatPrice(amount) {
-    const num = parseFloat(amount) || 0;
-    return `${paymentConfig.currencySymbol}${num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// ==================== NAVIGATION ====================
-const navToggle = document.getElementById('navToggle');
-const navMenu = document.getElementById('navMenu');
-const navbar = document.getElementById('navbar');
-
-if (navToggle && navMenu) {
-    navToggle.addEventListener('click', () => {
-        navToggle.classList.toggle('active');
-        navMenu.classList.toggle('active');
-    });
-}
-
-window.addEventListener('scroll', () => {
-    if (navbar) navbar.classList.toggle('scrolled', window.scrollY > 30);
-});
-
-// ==================== LOAD SHOP ITEMS ====================
+// ==================== LOAD PRODUCTS ====================
 async function loadShopItems() {
     const grid = document.getElementById('shopGrid');
     if (!grid) return;
-    grid.innerHTML = '<div class="loading-message">Loading products...</div>';
-
     try {
-        const snapshot = await getDocs(collection(db, 'shopItems'));
-        if (snapshot.empty) {
-            grid.innerHTML = `
-                <div class="shop-empty">
-                    <div class="shop-empty-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>No Products Available</h3>
-                    <p>We're stocking our shop. Please check back soon!</p>
-                </div>
-            `;
-            return;
-        }
-
-        shopItems = [];
-        snapshot.forEach(docSnap => {
-            shopItems.push({ ...docSnap.data(), id: docSnap.id });
+        const snap = await getDocs(collection(db, 'shopItems'));
+        allProducts = [];
+        snap.forEach(d => allProducts.push({ id: d.id, ...d.data() }));
+        // Sort by createdAt desc by default
+        allProducts.sort((a, b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
         });
-        shopItems.sort((a, b) => {
-            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return timeB - timeA;
-        });
-
-        grid.innerHTML = '';
-        shopItems.forEach((item, index) => {
-            const card = createShopItemCard(item);
-            card.style.animationDelay = `${index * 0.08}s`;
-            grid.appendChild(card);
-        });
-    } catch (error) {
-        warnPermissionsOnce(error);
-        grid.innerHTML = '<div class="loading-message">Shop coming soon. Check back later!</div>';
+        populateCategoryFilter();
+        renderProducts();
+    } catch (e) {
+        warn(e);
+        grid.innerHTML = '<p class="loading-message">Could not load products. Please try again later.</p>';
     }
 }
 
-function createShopItemCard(item) {
-    const div = document.createElement('div');
-    div.className = 'shop-item-card';
-    div.style.animation = 'fadeInUp 0.6s ease-out backwards';
+function populateCategoryFilter() {
+    const select = document.getElementById('shopCategory');
+    if (!select) return;
+    const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+    // Preserve "All" option
+    select.innerHTML = '<option value="">All Categories</option>' +
+        cats.map(c => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
+    if (currentFilter.category) select.value = currentFilter.category;
+}
 
-    let mediaHtml;
-    if (item.mediaType === 'video') {
-        mediaHtml = `<video class="shop-item-media" src="${item.media}" muted loop playsinline></video>`;
-    } else {
-        mediaHtml = `<img class="shop-item-media" src="${item.media}" alt="${item.name}" loading="lazy">`;
+function renderProducts() {
+    const grid = document.getElementById('shopGrid');
+    if (!grid) return;
+    let filtered = allProducts.slice();
+    // Filter: search
+    if (currentFilter.search) {
+        const q = currentFilter.search.toLowerCase();
+        filtered = filtered.filter(p =>
+            (p.name || '').toLowerCase().includes(q) ||
+            (p.description || '').toLowerCase().includes(q) ||
+            (p.category || '').toLowerCase().includes(q)
+        );
     }
+    // Filter: category
+    if (currentFilter.category) {
+        filtered = filtered.filter(p => p.category === currentFilter.category);
+    }
+    // Hide unavailable? No — show them but mark as out of stock.
+    // Sort
+    switch (currentFilter.sort) {
+        case 'price-low': filtered.sort((a,b) => (priceOf(a)) - (priceOf(b))); break;
+        case 'price-high': filtered.sort((a,b) => priceOf(b) - priceOf(a)); break;
+        case 'name': filtered.sort((a,b) => (a.name||'').localeCompare(b.name||'')); break;
+        default: /* newest */ filtered.sort((a,b) => {
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tb - ta;
+        });
+    }
+    const empty = document.getElementById('shopEmpty');
+    if (filtered.length === 0) {
+        grid.innerHTML = '';
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+    grid.innerHTML = '';
+    filtered.forEach(p => grid.appendChild(buildProductCard(p)));
+}
 
-    const priceMin = parseFloat(item.priceMin) || 0;
-    const priceMax = parseFloat(item.priceMax) || 0;
-    const priceText = priceMin === priceMax
-        ? `<span class="price-value">${formatPrice(priceMax)}</span>`
-        : `<span class="price-range">${formatPrice(priceMin)} - ${formatPrice(priceMax)}</span>`;
+function priceOf(p) {
+    if (typeof p.price === 'number') return p.price;
+    if (typeof p.priceMin === 'number') return p.priceMin;
+    return 0;
+}
 
+function isAvailable(p) {
+    // Explicit flag wins; else assume available
+    if (typeof p.available === 'boolean') return p.available;
+    if (typeof p.stock === 'number') return p.stock > 0;
+    return true;
+}
+
+function buildProductCard(item) {
+    const div = document.createElement('div');
+    div.className = 'product-card';
+    const media = item.mediaType === 'video'
+        ? `<video src="${item.media}" muted></video>`
+        : `<img src="${item.media || ''}" alt="${utils.escapeHtml(item.name)}" loading="lazy" onerror="this.style.opacity=0.2">`;
+    const available = isAvailable(item);
+    const priceText = (typeof item.price === 'number')
+        ? utils.formatPrice(item.price)
+        : (typeof item.priceMin === 'number' && typeof item.priceMax === 'number')
+            ? (item.priceMin === item.priceMax
+                ? utils.formatPrice(item.priceMin)
+                : `${utils.formatPrice(item.priceMin)} – ${utils.formatPrice(item.priceMax)}`)
+            : 'Price on request';
     div.innerHTML = `
-        <div class="shop-item-media">${mediaHtml}</div>
-        <div class="shop-item-content">
-            ${item.category ? `<div class="item-card-meta" style="margin-bottom: 0.5rem; font-size: 0.7rem;">${item.category}</div>` : ''}
-            <h3>${item.name}</h3>
-            <p class="shop-item-description">${item.description}</p>
-            <div class="shop-item-price">
-                <span class="price-label">Price:</span>
-                ${priceText}
+        <div class="product-image" onclick="JOWEFCO.openProductModal('${item.id}')">
+            ${media}
+            ${!available ? '<span class="product-badge out-of-stock">Out of Stock</span>' : (item.featured ? '<span class="product-badge">Featured</span>' : '')}
+            ${typeof item.stock === 'number' && item.stock > 0 ? `<span class="product-availability">${item.stock} in stock</span>` : ''}
+        </div>
+        <div class="product-body">
+            ${item.category ? `<div class="product-category">${utils.escapeHtml(item.category)}</div>` : ''}
+            <div class="product-name">${utils.escapeHtml(item.name)}</div>
+            <p class="product-description">${utils.escapeHtml(item.description || '')}</p>
+            <div class="product-price">${priceText}</div>
+            <div class="product-actions">
+                <button class="btn btn-primary btn-sm" ${!available ? 'disabled' : ''} onclick="JOWEFCO.addToCartUI('${item.id}')">Add to Cart</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCO.openProductModal('${item.id}')">Details</button>
             </div>
-            <button class="btn btn-primary btn-full" onclick="openBuyModal('${item.id}')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Buy Now
-            </button>
         </div>
     `;
     return div;
 }
 
-// ==================== LOAD PAYMENT CONFIG ====================
-async function loadPaymentConfig() {
-    try {
-        const paymentsDoc = await getDoc(doc(db, 'settings', 'payments'));
-        if (paymentsDoc.exists()) {
-            const data = paymentsDoc.data();
-            paymentConfig.currency = data.currency || 'NGN';
-            paymentConfig.currencySymbol = data.currencySymbol || '₦';
-
-            // Update currency symbol display
-            const symbolEl = document.getElementById('currencySymbol');
-            if (symbolEl) symbolEl.textContent = paymentConfig.currencySymbol;
-
-            // Build list of active gateways
-            activeGateways = {};
-            if (data.paypal && data.paypal.enabled && data.paypal.clientId) {
-                activeGateways.paypal = { clientId: data.paypal.clientId };
-            }
-            if (data.paystack && data.paystack.enabled && data.paystack.publicKey) {
-                activeGateways.paystack = { publicKey: data.paystack.publicKey };
-            }
-            if (data.flutterwave && data.flutterwave.enabled && data.flutterwave.publicKey) {
-                activeGateways.flutterwave = { publicKey: data.flutterwave.publicKey };
-            }
-        }
-    } catch (error) {
-        // Payment buttons won't appear — user can still browse.
-        warnPermissionsOnce(error);
-    }
-}
-
-// ==================== BUY MODAL ====================
-window.openBuyModal = function (productId) {
-    if (!currentUser) {
-        showToast('Please wait while we set up your profile...', 'info');
-        return;
-    }
-
-    selectedProduct = shopItems.find(p => p.id === productId);
-    if (!selectedProduct) {
-        showToast('Product not found', 'error');
-        return;
-    }
-
-    selectedPaymentMethod = null;
-
-    // Fill product preview
-    const productPreview = document.getElementById('buyModalProduct');
-    let mediaHtml;
-    if (selectedProduct.mediaType === 'video') {
-        mediaHtml = `<video src="${selectedProduct.media}" muted loop playsinline></video>`;
-    } else {
-        mediaHtml = `<img src="${selectedProduct.media}" alt="${selectedProduct.name}">`;
-    }
-    productPreview.innerHTML = `
-        ${mediaHtml}
-        <div class="buy-modal-product-info">
-            <h4>${selectedProduct.name}</h4>
-            <p>${selectedProduct.description.substring(0, 80)}${selectedProduct.description.length > 80 ? '...' : ''}</p>
+// ==================== PRODUCT MODAL ====================
+window.JOWEFCO.openProductModal = function (id) {
+    const item = allProducts.find(p => p.id === id);
+    if (!item) return;
+    const body = document.getElementById('productModalBody');
+    if (!body) return;
+    const available = isAvailable(item);
+    const media = item.mediaType === 'video'
+        ? `<video src="${item.media}" controls style="width:100%;border-radius:10px;margin-bottom:1rem;"></video>`
+        : `<img src="${item.media || ''}" alt="${utils.escapeHtml(item.name)}" style="width:100%;border-radius:10px;margin-bottom:1rem;" onerror="this.style.background='var(--bg-tertiary)';this.style.minHeight='200px';">`;
+    const priceText = (typeof item.price === 'number')
+        ? utils.formatPrice(item.price)
+        : (typeof item.priceMin === 'number' && typeof item.priceMax === 'number')
+            ? (item.priceMin === item.priceMax
+                ? utils.formatPrice(item.priceMin)
+                : `${utils.formatPrice(item.priceMin)} – ${utils.formatPrice(item.priceMax)}`)
+            : 'Price on request';
+    body.innerHTML = `
+        ${media}
+        ${item.category ? `<span class="section-badge">${utils.escapeHtml(item.category)}</span>` : ''}
+        <h2 style="margin:0.5rem 0 1rem 0;">${utils.escapeHtml(item.name)}</h2>
+        <div class="product-price" style="font-size:1.5rem;margin-bottom:1rem;">${priceText}</div>
+        <p style="color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">${utils.escapeHtml(item.description || 'No description available.')}</p>
+        ${typeof item.stock === 'number' ? `<p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:1rem;">Stock: ${item.stock} units</p>` : ''}
+        ${!available ? '<p style="color:var(--danger);font-weight:600;margin-bottom:1rem;">Currently out of stock</p>' : ''}
+        <div class="flex gap-sm">
+            <button class="btn btn-primary" ${!available ? 'disabled' : ''} onclick="JOWEFCO.addToCartUI('${item.id}');document.getElementById('productModal').classList.remove('active');">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Add to Cart
+            </button>
+            <button class="btn btn-outline" onclick="document.getElementById('productModal').classList.remove('active')">Close</button>
         </div>
     `;
-
-    // Set price range hint
-    const priceMin = parseFloat(selectedProduct.priceMin) || 0;
-    const priceMax = parseFloat(selectedProduct.priceMax) || 0;
-    const hint = document.getElementById('priceRangeHint');
-    if (priceMin === priceMax) {
-        hint.textContent = `Fixed price: ${formatPrice(priceMax)}`;
-        document.getElementById('buyOfferPrice').value = priceMax;
-        document.getElementById('buyOfferPrice').min = priceMax;
-        document.getElementById('buyOfferPrice').max = priceMax;
-    } else {
-        hint.textContent = `Acceptable range: ${formatPrice(priceMin)} to ${formatPrice(priceMax)}`;
-        document.getElementById('buyOfferPrice').value = priceMax;
-        document.getElementById('buyOfferPrice').min = priceMin;
-        document.getElementById('buyOfferPrice').max = priceMax;
-    }
-
-    // Pre-fill user info
-    document.getElementById('buyCustomerName').value = currentUser.name;
-    document.getElementById('buyCustomerPhone').value = currentUser.phone;
-
-    // Render payment methods
-    renderPaymentMethods();
-
-    // Show modal
-    document.getElementById('buyModal').classList.add('active');
-    const modal = document.getElementById('buyModal');
-    modal.querySelector('.modal-close').onclick = () => modal.classList.remove('active');
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('active'); };
+    document.getElementById('productModal').classList.add('active');
 };
 
-function renderPaymentMethods() {
-    const container = document.getElementById('paymentMethods');
-    const unavailable = document.getElementById('paymentUnavailable');
-    const proceedBtn = document.getElementById('proceedPaymentBtn');
-
-    const gateways = Object.keys(activeGateways);
-
-    if (gateways.length === 0) {
-        container.innerHTML = '';
-        unavailable.style.display = 'block';
-        proceedBtn.disabled = true;
+// ==================== ADD TO CART (UI) ====================
+window.JOWEFCO.addToCartUI = function (id) {
+    const item = allProducts.find(p => p.id === id);
+    if (!item) return;
+    if (!isAvailable(item)) {
+        utils.showToast('This product is out of stock', 'error');
         return;
     }
+    const price = priceOf(item);
+    const imageUrl = item.media || '';
+    window.JOWEFCO.cart.add(id, item.name, price, imageUrl, 1);
+    utils.showToast(`${item.name} added to cart`, 'success');
+    // Open cart drawer briefly to confirm
+    // JOWEFCO.openCart();
+};
 
-    unavailable.style.display = 'none';
-    container.innerHTML = '';
-
-    const gatewayLabels = {
-        paypal: 'PayPal',
-        paystack: 'Paystack',
-        flutterwave: 'Flutterwave'
-    };
-
-    gateways.forEach(gateway => {
-        const method = document.createElement('div');
-        method.className = 'payment-method';
-        method.innerHTML = `
-            ${PAYMENT_ICONS[gateway]}
-            <span class="payment-method-name">${gatewayLabels[gateway]}</span>
-        `;
-        method.onclick = () => {
-            document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
-            method.classList.add('selected');
-            selectedPaymentMethod = gateway;
-            proceedBtn.disabled = false;
-        };
-        container.appendChild(method);
-    });
+// ==================== CHECKOUT ====================
+function renderOrderSummary() {
+    const cart = window.JOWEFCO.cart.get();
+    const summary = document.getElementById('checkoutOrderSummary');
+    if (!summary) return;
+    if (cart.length === 0) {
+        summary.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;margin:0;">Your cart is empty.</p>';
+        return;
+    }
+    summary.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+            <thead>
+                <tr><th style="text-align:left;padding:0.35rem 0;">Item</th><th style="text-align:center;padding:0.35rem 0;">Qty</th><th style="text-align:right;padding:0.35rem 0;">Subtotal</th></tr>
+            </thead>
+            <tbody>
+                ${cart.map(i => `
+                    <tr>
+                        <td style="padding:0.35rem 0;">${utils.escapeHtml(i.name)}</td>
+                        <td style="text-align:center;padding:0.35rem 0;">${i.quantity}</td>
+                        <td style="text-align:right;padding:0.35rem 0;">${utils.formatPrice(i.price * i.quantity)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" style="padding:0.75rem 0 0 0;font-weight:700;text-align:right;border-top:1px solid var(--surface-border);">Total:</td>
+                    <td style="padding:0.75rem 0 0 0;font-weight:700;text-align:right;color:var(--brand-blue);">${utils.formatPrice(window.JOWEFCO.cart.getTotal())}</td>
+                </tr>
+            </tfoot>
+        </table>
+    `;
 }
 
-// ==================== PAYMENT PROCESSING ====================
-document.getElementById('proceedPaymentBtn').addEventListener('click', async () => {
-    if (!selectedProduct || !selectedPaymentMethod) {
-        showToast('Please select a payment method', 'error');
+async function submitOrderRequest(e) {
+    e.preventDefault();
+    const cart = window.JOWEFCO.cart.get();
+    if (cart.length === 0) {
+        utils.showToast('Your cart is empty', 'error');
+        return;
+    }
+    const name = document.getElementById('checkoutName').value.trim();
+    const phone = document.getElementById('checkoutPhone').value.trim();
+    const email = document.getElementById('checkoutEmail').value.trim();
+    const location = document.getElementById('checkoutLocation').value.trim();
+    const notes = document.getElementById('checkoutNotes').value.trim();
+    if (!name || !phone || !location) {
+        utils.showToast('Please fill in all required fields', 'error');
         return;
     }
 
-    const offerPrice = parseFloat(document.getElementById('buyOfferPrice').value);
-    const priceMin = parseFloat(selectedProduct.priceMin) || 0;
-    const priceMax = parseFloat(selectedProduct.priceMax) || 0;
-
-    if (!offerPrice || offerPrice < priceMin || offerPrice > priceMax) {
-        showToast(`Offer must be between ${formatPrice(priceMin)} and ${formatPrice(priceMax)}`, 'error');
-        return;
+    // Ensure user is registered
+    let user = utils.getUserFromStorage();
+    if (!user) {
+        user = { id: utils.generateUserId(), name, phone };
+        utils.saveUserToStorage(user);
+        await utils.registerUserInFirestore(user);
     }
 
-    const customerName = document.getElementById('buyCustomerName').value.trim();
-    const customerPhone = document.getElementById('buyCustomerPhone').value.trim();
-    const customerEmail = document.getElementById('buyCustomerEmail').value.trim();
+    // Build order document. Use cart-based structure with items array.
+    // The total amount is the cart total. We mark paymentStatus='pending'
+    // and orderStatus='requested' — the admin reviews and sends payment instructions.
+    const totalAmount = window.JOWEFCO.cart.getTotal();
+    const items = cart.map(i => ({
+        productId: i.productId,
+        productName: i.name,
+        price: i.price,
+        quantity: i.quantity,
+        imageUrl: i.imageUrl || null
+    }));
 
-    if (!customerName || !customerPhone) {
-        showToast('Please fill in your name and phone', 'error');
-        return;
-    }
-
-    // Process payment based on selected method
+    utils.showLoading(true, 'Submitting your order...');
     try {
-        switch (selectedPaymentMethod) {
-            case 'paypal':
-                await processPayPalPayment(offerPrice, customerName, customerPhone, customerEmail);
-                break;
-            case 'paystack':
-                await processPaystackPayment(offerPrice, customerName, customerPhone, customerEmail);
-                break;
-            case 'flutterwave':
-                await processFlutterwavePayment(offerPrice, customerName, customerPhone, customerEmail);
-                break;
-        }
-    } catch (error) {
-        console.error('Payment error:', error);
-        showToast('Payment failed. Please try again.', 'error');
-        showLoading(false);
-    }
-});
-
-// ==================== PAYPAL ====================
-async function loadPayPalSDK() {
-    if (paypalSdkLoaded || !activeGateways.paypal) return;
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${activeGateways.paypal.clientId}&currency=${paymentConfig.currency}&intent=capture`;
-        script.onload = () => { paypalSdkLoaded = true; resolve(); };
-        script.onerror = () => reject(new Error('Failed to load PayPal SDK'));
-        document.head.appendChild(script);
-    });
-}
-
-async function processPayPalPayment(amount, name, phone, email) {
-    showLoading(true, 'Loading PayPal...');
-
-    if (!paypalSdkLoaded) {
-        await loadPayPalSDK();
-    }
-
-    showLoading(false);
-
-    // Create a temporary container for PayPal buttons
-    const existingBtn = document.getElementById('paypalButtonContainer');
-    if (existingBtn) existingBtn.remove();
-
-    const btnContainer = document.createElement('div');
-    btnContainer.id = 'paypalButtonContainer';
-    btnContainer.style.marginTop = '1rem';
-    document.querySelector('#buyModal .buy-modal-content').appendChild(btnContainer);
-
-    // Show a friendly note
-    const note = document.createElement('p');
-    note.style.cssText = 'font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; text-align: center;';
-    note.textContent = 'Click the PayPal button below to complete your payment.';
-    btnContainer.appendChild(note);
-
-    const btnDiv = document.createElement('div');
-    btnDiv.id = 'paypal-button';
-    btnContainer.appendChild(btnDiv);
-
-    window.paypal.Buttons({
-        createOrder: (data, actions) => {
-            return actions.order.create({
-                purchase_units: [{
-                    amount: { value: amount.toFixed(2), currency_code: paymentConfig.currency },
-                    description: selectedProduct.name,
-                    custom_id: selectedProduct.id
-                }]
-            });
-        },
-        onApprove: async (data, actions) => {
-            showLoading(true, 'Confirming payment...');
-            const details = await actions.order.capture();
-            await saveOrder(amount, 'paypal', details.id, name, phone, email);
-            showLoading(false);
-            document.getElementById('buyModal').classList.remove('active');
-            document.getElementById('paypalButtonContainer')?.remove();
-            showToast('Payment successful! We will contact you shortly.', 'success');
-        },
-        onError: (err) => {
-            console.error('PayPal error:', err);
-            showToast('PayPal payment failed. Please try again.', 'error');
-            document.getElementById('paypalButtonContainer')?.remove();
-        },
-        onCancel: () => {
-            showToast('Payment cancelled', 'info');
-            document.getElementById('paypalButtonContainer')?.remove();
-        }
-    }).render('#paypal-button');
-}
-
-// ==================== PAYSTACK ====================
-async function processPaystackPayment(amount, name, phone, email) {
-    if (!email) {
-        showToast('Email is required for Paystack payment', 'error');
-        return;
-    }
-
-    // Load Paystack inline script if not loaded
-    if (!window.PaystackPop) {
-        await loadScript('https://js.paystack.co/v1/inline.js');
-    }
-
-    const reference = 'JOW_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-    const handler = window.PaystackPop.setup({
-        key: activeGateways.paystack.publicKey,
-        email: email,
-        amount: Math.round(amount * 100), // Paystack uses kobo (smallest unit)
-        currency: paymentConfig.currency,
-        ref: reference,
-        metadata: {
-            custom_fields: [
-                { display_name: 'Product', variable_name: 'product', value: selectedProduct.name },
-                { display_name: 'Customer Phone', variable_name: 'phone', value: phone }
-            ]
-        },
-        callback: async (response) => {
-            showLoading(true, 'Confirming payment...');
-            await saveOrder(amount, 'paystack', response.reference, name, phone, email);
-            showLoading(false);
-            document.getElementById('buyModal').classList.remove('active');
-            showToast('Payment successful! We will contact you shortly.', 'success');
-        },
-        onClose: () => {
-            showToast('Payment window closed', 'info');
-        }
-    });
-    handler.openIframe();
-}
-
-// ==================== FLUTTERWAVE ====================
-async function processFlutterwavePayment(amount, name, phone, email) {
-    // Load Flutterwave script if not loaded
-    if (!window.FlutterwaveCheckout) {
-        await loadScript('https://checkout.flutterwave.com/v3.js');
-    }
-
-    const reference = 'JOW_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-    window.FlutterwaveCheckout({
-        public_key: activeGateways.flutterwave.publicKey,
-        tx_ref: reference,
-        amount: amount,
-        currency: paymentConfig.currency,
-        payment_options: 'card,banktransfer,ussd,account',
-        customer: {
-            email: email || `${phone.replace(/\D/g, '')}@jowefco.shop`,
-            phone_number: phone,
-            name: name
-        },
-        customizations: {
-            title: 'JOWEFCO Shop',
-            description: selectedProduct.name,
-            logo: 'https://via.placeholder.com/50x50/D4AF37/0A0A0F?text=J'
-        },
-        callback: async (response) => {
-            if (response.status === 'successful' || response.status === 'completed') {
-                showLoading(true, 'Confirming payment...');
-                await saveOrder(amount, 'flutterwave', response.transaction_id || reference, name, phone, email);
-                showLoading(false);
-                document.getElementById('buyModal').classList.remove('active');
-                showToast('Payment successful! We will contact you shortly.', 'success');
-            } else {
-                showToast('Payment was not completed', 'error');
-            }
-        },
-        onclose: () => {
-            // User closed the modal
-        }
-    });
-}
-
-// Helper to load external scripts
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-        document.head.appendChild(script);
-    });
-}
-
-// ==================== SAVE ORDER TO FIRESTORE ====================
-async function saveOrder(amount, paymentMethod, paymentRef, name, phone, email) {
-    const orderData = {
-        userId: currentUser.id,
-        customerName: name,
-        customerPhone: phone,
-        customerEmail: email || null,
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        productDescription: selectedProduct.description,
-        productMedia: selectedProduct.media,
-        productMediaType: selectedProduct.mediaType || 'image',
-        amount: amount,
-        currency: paymentConfig.currency,
-        paymentMethod: paymentMethod,
-        paymentRef: paymentRef,
-        paymentStatus: 'paid',
-        orderStatus: 'pending',
-        createdAt: Timestamp.now()
-    };
-
-    await addDoc(collection(db, 'shopOrders'), orderData);
-}
-
-// ==================== USER REGISTRATION ====================
-async function checkAndRegisterUser() {
-    currentUser = getUserFromStorage();
-    if (!currentUser) {
-        const name = prompt('Welcome to JOWEFCO Shop! Please enter your full name:');
-        if (!name) return;
-        const phone = prompt('Please enter your phone number:');
-        if (!phone) return;
-        const userId = generateUserId();
-        currentUser = { id: userId, name: name.trim(), phone: phone.trim() };
-        saveUserToStorage(currentUser);
-        await registerUserInFirestore(currentUser);
-        showToast('Welcome to JOWEFCO!', 'success');
-    }
-}
-
-// ==================== REVEAL ANIMATIONS ====================
-function initReveal() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('active');
+        const orderRef = await addDoc(collection(db, 'shopOrders'), {
+            userId: user.id,
+            customerName: name,
+            customerPhone: phone,
+            customerEmail: email || null,
+            deliveryLocation: location,
+            notes: notes || null,
+            items: items,
+            // For backwards-compat with single-product rules, also populate
+            // the legacy fields using the first item.
+            productId: items[0]?.productId || null,
+            productName: items.map(i => i.productName).join(', '),
+            amount: totalAmount,
+            paymentMethod: 'pending',     // admin will assign after confirmation
+            paymentStatus: 'pending',     // see updated firestore.rules
+            orderStatus: 'requested',
+            createdAt: Timestamp.now()
         });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-}
-
-// ==================== LOAD FOOTER INFO ====================
-async function loadFooterInfo() {
-    try {
-        const contactDoc = await getDoc(doc(db, 'settings', 'contact'));
-        const footerContact = document.getElementById('footerContact');
-        if (contactDoc.exists() && footerContact) {
-            const data = contactDoc.data();
-            const items = footerContact.querySelectorAll('li');
-            if (items[0]) items[0].querySelector('span').textContent = data.phone || 'Not available';
-            if (items[1]) items[1].querySelector('span').textContent = data.email || 'Not available';
-            if (items[2]) items[2].querySelector('span').textContent = data.address || 'Not available';
-        }
-
-        const socialDoc = await getDoc(doc(db, 'settings', 'social'));
-        const footerSocial = document.getElementById('footerSocial');
-        if (footerSocial) {
-            const links = socialDoc.exists() ? socialDoc.data() : {};
-            footerSocial.innerHTML = '';
-            const platforms = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'];
-            platforms.forEach(platform => {
-                const url = links[platform];
-                if (url && url.trim()) {
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.className = 'social-link';
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    a.setAttribute('aria-label', `${platform} link`);
-                    a.innerHTML = SOCIAL_ICONS[platform];
-                    footerSocial.appendChild(a);
-                }
-            });
-        }
-    } catch (error) {
-        // Footer keeps HTML defaults.
-        warnPermissionsOnce(error);
+        utils.showLoading(false);
+        // Clear cart and show success
+        window.JOWEFCO.cart.clear();
+        utils.showToast('Order request submitted! We will contact you within 1 business day.', 'success');
+        // Show confirmation modal
+        showOrderConfirmation(name, phone, totalAmount);
+        // Reset form
+        document.getElementById('checkoutForm').reset();
+        renderOrderSummary();
+    } catch (e) {
+        warn(e);
+        utils.showLoading(false);
+        utils.showToast('Could not submit order. Please try again or contact us directly.', 'error');
+        console.error(e);
     }
 }
 
-// ==================== INITIALIZATION ====================
-async function init() {
-    await checkAndRegisterUser();
-    await Promise.all([
-        loadShopItems(),
-        loadPaymentConfig(),
-        loadFooterInfo()
-    ]);
-    initReveal();
+function showOrderConfirmation(name, phone, total) {
+    const body = document.getElementById('productModalBody');
+    if (!body) return;
+    body.innerHTML = `
+        <div style="text-align:center;padding:1rem 0;">
+            <div style="width:64px;height:64px;background:rgba(27,135,84,0.15);color:var(--success);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h2>Order Request Received</h2>
+            <p style="color:var(--text-secondary);margin:0.5rem 0 1.5rem 0;">Thank you, ${utils.escapeHtml(name)}! Your order request has been received.</p>
+            <p style="font-size:0.95rem;margin-bottom:0.5rem;"><strong>Total (estimated):</strong> ${utils.formatPrice(total)}</p>
+            <p style="font-size:0.9rem;color:var(--text-tertiary);margin-bottom:1.5rem;">Our team will call you on <strong>${utils.escapeHtml(phone)}</strong> within 1 business day to confirm stock, delivery fee, and total payable. We'll then send payment instructions or a secure payment link.</p>
+            <button class="btn btn-primary" onclick="document.getElementById('productModal').classList.remove('active');">Close</button>
+        </div>
+    `;
+    document.getElementById('productModal').classList.add('active');
 }
 
-init();
+// ==================== INIT ====================
+function initShopPage() {
+    loadShopItems();
+    // Search / filter / sort handlers
+    document.getElementById('shopSearch')?.addEventListener('input', (e) => {
+        currentFilter.search = e.target.value;
+        renderProducts();
+    });
+    document.getElementById('shopCategory')?.addEventListener('change', (e) => {
+        currentFilter.category = e.target.value;
+        renderProducts();
+    });
+    document.getElementById('shopSort')?.addEventListener('change', (e) => {
+        currentFilter.sort = e.target.value;
+        renderProducts();
+    });
+    document.getElementById('checkoutForm')?.addEventListener('submit', submitOrderRequest);
+    renderOrderSummary();
+    // Re-render summary when cart changes (custom event)
+    window.addEventListener('jowefco:cart:update', renderOrderSummary);
+    // If URL has #checkout, scroll there
+    if (window.location.hash === '#checkout') {
+        setTimeout(() => {
+            document.getElementById('checkout')?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initShopPage);
+} else {
+    initShopPage();
+}
+
+// Override cart save to dispatch event (so the summary re-renders)
+const _origSave = window.JOWEFCO.cart.save;
+window.JOWEFCO.cart.save = function(cart) {
+    _origSave.call(window.JOWEFCO.cart, cart);
+    window.dispatchEvent(new CustomEvent('jowefco:cart:update'));
+};
+const _origRemove = window.JOWEFCO.cart.remove;
+window.JOWEFCO.cart.remove = function(id) {
+    _origRemove.call(window.JOWEFCO.cart, id);
+    window.dispatchEvent(new CustomEvent('jowefco:cart:update'));
+};
+const _origClear = window.JOWEFCO.cart.clear;
+window.JOWEFCO.cart.clear = function() {
+    _origClear.call(window.JOWEFCO.cart);
+    window.dispatchEvent(new CustomEvent('jowefco:cart:update'));
+};

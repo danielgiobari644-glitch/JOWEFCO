@@ -43,6 +43,11 @@ rules_version = '2';
 //
 // HOW TO ACTIVATE ADMIN ACCESS:
 //   1. Create your admin account in Firebase Console → Authentication → Users
+//      Authorized JOWEFCO admin email addresses (for password-reset):
+//        • danielgiobari644@gmail.com
+//        • jowefcotech@gmail.com
+//      (These are the only accounts that should be granted admin privileges.
+//       They are NOT exposed in the public website UI.)
 //   2. Copy that user's UID (click the user → copy "User UID")
 //   3. Replace 'REPLACE_WITH_ADMIN_UID' below with that UID
 //   4. Publish the rules
@@ -52,7 +57,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ----------------------------------------------------------------
-    // ADMIN DETECTION — UPDATE THIS WITH YOUR REAL ADMIN UID
+    // ADMIN DETECTION
+    // ----------------------------------------------------------------
+    // ⚠️  YOU MUST REPLACE THE UID BELOW WITH YOUR ACTUAL FIREBASE AUTH UID!
+    //
+    //   1. Go to Firebase Console → Authentication → Users
+    //   2. Click your admin user → copy the "User UID"
+    //   3. Paste it between the quotes below (replace REPLACE_WITH_ADMIN_UID)
+    //   4. Re-deploy:  firebase deploy --only firestore:rules
+    //
+    //   If you skip this, the admin panel CANNOT read orders, bookings,
+    //   or pending reviews.  The public site works fine regardless.
     // ----------------------------------------------------------------
     function isAdmin() {
       return request.auth != null
@@ -90,8 +105,9 @@ service cloud.firestore {
     // TESTIMONIALS — public reads approved; anyone submits pending
     // ----------------------------------------------------------------
     match /testimonials/{testimonialId} {
-      // Public can read only APPROVED testimonials
-      allow read: if resource.data.approved == true;
+      // Public can read only APPROVED testimonials;
+      // Admin can read ALL testimonials (including pending ones).
+      allow read: if resource.data.approved == true || isAdmin();
 
       // Anyone can submit a pending review (must be approved = false)
       allow create: if request.resource.data.keys().hasAll(['name', 'rating', 'text', 'approved'])
@@ -190,9 +206,27 @@ service cloud.firestore {
     // ----------------------------------------------------------------
     // SHOP ORDERS — anyone can create (anonymous checkout); admin all
     // ----------------------------------------------------------------
+    // Two valid order shapes are accepted:
+    //
+    //   (A) Legacy single-product order:
+    //       { userId, customerName, customerPhone, productId, productName,
+    //         amount, paymentMethod (paypal|paystack|flutterwave),
+    //         paymentStatus: 'paid', orderStatus }
+    //
+    //   (B) Cart-based order-request (NEW — used by the redesigned shop):
+    //       { userId, customerName, customerPhone, items: [{productId,
+    //         productName, price, quantity, imageUrl}],
+    //         amount (sum of items), paymentMethod: 'pending',
+    //         paymentStatus: 'pending', orderStatus: 'requested',
+    //         deliveryLocation, notes (optional), customerEmail (optional) }
+    //
+    //   The (B) shape has paymentStatus='pending' because payment is
+    //   collected MANUALLY by the admin after confirming stock and total.
+    //   This is safe because the doc is created with orderStatus='requested'
+    //   and cannot transition to 'paid' without admin action.
+    // ----------------------------------------------------------------
     match /shopOrders/{orderId} {
-      // Public visitors create orders at checkout (they are anonymous)
-      allow create: if request.resource.data.keys().hasAll(['userId', 'customerName', 'customerPhone', 'productId', 'productName', 'amount', 'paymentMethod', 'paymentStatus', 'orderStatus'])
+      allow create: if request.resource.data.keys().hasAll(['userId', 'customerName', 'customerPhone', 'amount', 'paymentMethod', 'paymentStatus', 'orderStatus'])
                     && request.resource.data.customerName is string
                     && request.resource.data.customerName.size() > 0
                     && request.resource.data.customerPhone is string
@@ -200,10 +234,29 @@ service cloud.firestore {
                     && request.resource.data.amount is number
                     && request.resource.data.amount > 0
                     && request.resource.data.paymentMethod is string
-                    && (request.resource.data.paymentMethod == 'paypal'
-                        || request.resource.data.paymentMethod == 'paystack'
-                        || request.resource.data.paymentMethod == 'flutterwave')
-                    && request.resource.data.paymentStatus == 'paid';
+                    && (
+                      // (A) Legacy: gateway-paid order — paymentStatus must be 'paid'
+                      //     and paymentMethod must be one of the configured gateways.
+                      (
+                        (request.resource.data.paymentMethod == 'paypal'
+                         || request.resource.data.paymentMethod == 'paystack'
+                         || request.resource.data.paymentMethod == 'flutterwave')
+                        && request.resource.data.paymentStatus == 'paid'
+                        && request.resource.data.keys().hasAll(['productId', 'productName'])
+                      )
+                      ||
+                      // (B) New: cart-based order-request — paymentStatus is 'pending'
+                      //     and paymentMethod is 'pending' (admin assigns a real
+                      //     gateway later). Must include items array.
+                      (
+                        request.resource.data.paymentMethod == 'pending'
+                        && request.resource.data.paymentStatus == 'pending'
+                        && request.resource.data.orderStatus == 'requested'
+                        && request.resource.data.keys().hasAll(['items'])
+                        && request.resource.data.items is list
+                        && request.resource.data.items.size() > 0
+                      )
+                    );
 
       // Only admin can read/update/delete orders
       // (Public users cannot list orders — they don't have a "my orders" page)

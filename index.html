@@ -1,414 +1,312 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JOWEFCO | Premium Welding & Fabrication</title>
-    <meta name="description" content="Premium welding, metal fabrication, and custom engineering services. Industrial-grade craftsmanship with 15+ years of experience.">
+    <title>JOWEFCO Technical Services | Welding, Fabrication & Engineering Services</title>
+    <meta name="description" content="JOWEFCO Technical Services provides professional welding, metal fabrication, structural steel, custom metalwork, technical and engineering services in Port Harcourt, Rivers State, Nigeria.">
+    <meta name="keywords" content="JOWEFCO Technical Services, welding services Nigeria, metal fabrication Nigeria, steel fabrication, custom metalwork, technical services Nigeria, engineering services Nigeria">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="JOWEFCO Technical Services">
+    <meta name="geo.region" content="NG-RI">
+    <meta name="geo.placename" content="Port Harcourt, Rivers State, Nigeria">
+    <meta name="theme-color" content="#003B7A">
+    <link rel="canonical" href="https://jowefco.web.app/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="JOWEFCO Technical Services">
+    <meta property="og:title" content="JOWEFCO Technical Services | Welding, Fabrication & Engineering Services">
+    <meta property="og:description" content="Professional welding, metal fabrication, structural steel, custom metalwork, technical and engineering services in Port Harcourt, Rivers State, Nigeria.">
+    <meta property="og:url" content="https://jowefco.web.app/">
+    <meta property="og:image" content="https://jowefco.web.app/logo.jpg">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="JOWEFCO Technical Services">
+    <meta name="twitter:description" content="Professional welding, metal fabrication, structural steel, and engineering services in Nigeria.">
+    <meta name="twitter:image" content="https://jowefco.web.app/logo.jpg">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": "https://jowefco.web.app/#business",
+      "name": "JOWEFCO Technical Services",
+      "description": "Professional technical services company specializing in precision welding, metal fabrication, structural steelwork, custom metalwork, and reliable engineering solutions in Nigeria.",
+      "url": "https://jowefco.web.app/",
+      "image": "https://jowefco.web.app/logo.jpg",
+      "logo": "https://jowefco.web.app/logo.jpg",
+      "telephone": "+2348012345678",
+      "email": "info@jowefco.com",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Port Harcourt",
+        "addressRegion": "Rivers State",
+        "addressCountry": "NG"
+      },
+      "areaServed": ["Port Harcourt", "Rivers State", "Nigeria"],
+      "openingHoursSpecification": [{
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+        "opens": "08:00",
+        "closes": "18:00"
+      }]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%230A0A0F%22 stroke=%22%23D4AF37%22 stroke-width=%222%22/><path d=%22M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z%22 fill=%22%23D4AF37%22/></svg>">
-    <!-- Decoy element: prevents platform-injected share-modal.js from throwing
-         "Cannot read properties of null (reading 'addEventListener')" -->
-    <div id="share-modal" style="display:none!important"></div>
+    <link rel="icon" type="image/jpeg" href="/logo.jpg">
+    <link rel="apple-touch-icon" href="/logo.jpg">
     <script>
-        // Run in <head> so this executes BEFORE any platform-injected script.
-        (function(){
-            // 1) Prevent the error at its source: if the platform script does
-            //    document.querySelector('#share-modal') or getElementById, it
-            //    now finds the decoy <div> above instead of null.
-            // 2) Belt-and-suspenders: also suppress any leftover errors.
-            var _done = false;
-            function eat() { _done = true; return true; }
-            window.onerror = function(m,s){ if(s && s.indexOf('share-modal')!==-1) return eat(); };
-            window.addEventListener('error', function(e){
-                if(e.filename && e.filename.indexOf('share-modal')!==-1){ e.stopImmediatePropagation(); e.preventDefault(); }
-            }, true);
-            // 3) Filter console output so even DevTools stays clean.
-            var _ce = console.error, _cw = console.warn;
-            function filt(args){
-                var s = args[0] != null ? String(args[0]) : '';
-                return s.indexOf('share-modal') !== -1;
+    // Prevent any platform-injected share-modal script from erroring
+    (function(){
+        var _origCreate = document.createElement.bind(document);
+        document.createElement = function(tag) {
+            var el = _origCreate(tag);
+            if (tag && tag.toLowerCase() === 'script') {
+                var _realSet = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src').set;
+                Object.defineProperty(el, 'src', {
+                    set: function(v) {
+                        if (typeof v === 'string' && v.indexOf('share-modal') !== -1) return;
+                        _realSet.call(this, v);
+                    },
+                    get: function() {
+                        return Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src').get.call(this);
+                    },
+                    configurable: true
+                });
             }
-            console.error = function(){ if(!filt(arguments)) _ce.apply(console, arguments); };
-            console.warn  = function(){ if(!filt(arguments)) _cw.apply(console, arguments); };
-        })();
+            return el;
+        };
+        new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                var added = mutations[i].addedNodes;
+                for (var j = 0; j < added.length; j++) {
+                    var n = added[j];
+                    if (n.tagName === 'SCRIPT' && n.src && n.src.indexOf('share-modal') !== -1) { n.remove(); }
+                }
+            }
+        }).observe(document.documentElement, { childList: true, subtree: true });
+        var _oe = console.error, _ow = console.warn;
+        function _isSM(a){ return a[0]!=null && String(a[0]).indexOf('share-modal')!==-1; }
+        console.error = function(){ if(!_isSM(arguments)) _oe.apply(console,arguments); };
+        console.warn  = function(){ if(!_isSM(arguments)) _ow.apply(console,arguments); };
+        window.onerror = function(m,s){ if(s && s.indexOf('share-modal')!==-1) return true; };
+        window.addEventListener('error', function(e){
+            if(e.filename && e.filename.indexOf('share-modal')!==-1){ e.stopImmediatePropagation(); e.preventDefault(); }
+        }, true);
+    })();
     </script>
 </head>
 <body>
-    <!-- Navigation -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <!-- ==================== NAVBAR ==================== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
-            <a href="#home" class="logo" aria-label="JOWEFCO Home">
-                <div class="logo-icon-wrapper">
-                    <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
-                        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
-                        <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
-                    </svg>
-                </div>
-                <span class="logo-text">JOWEFCO</span>
+            <a href="index.html" class="logo" aria-label="JOWEFCO Home">
+                <img src="logo.jpg" alt="JOWEFCO Technical Services" class="logo-img">
             </a>
-            <button class="nav-toggle" id="navToggle" aria-label="Open menu">
+            <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
             <ul class="nav-menu" id="navMenu">
-                <li><a href="#home" class="nav-link active">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Home
-                </a></li>
-                <li><a href="#portfolio" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18" stroke-linecap="round"/></svg>
-                    Portfolio
-                </a></li>
-                <li><a href="shop.html" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Shop
-                </a></li>
-                <li><a href="projects.html" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Book Project
-                </a></li>
-                <li><a href="#testimonials" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Reviews
-                </a></li>
-                <li><a href="#contact" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Contact
-                </a></li>
+                <li><a href="index.html" class="nav-link active">Home</a></li>
+                <li><a href="about.html" class="nav-link">About</a></li>
+                <li><a href="services.html" class="nav-link">Services</a></li>
+                <li><a href="projects.html" class="nav-link">Projects</a></li>
+                <li><a href="shop.html" class="nav-link">Shop</a></li>
+                <li><a href="contact.html" class="nav-link">Contact</a></li>
             </ul>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-media-container" id="heroMediaContainer"></div>
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-            <div class="hero-badge">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z"/></svg>
-                Excellence in Engineering
-            </div>
-            <h1 id="heroTitle" class="hero-title">Precision Welding & Metal Fabrication</h1>
-            <p id="heroDescription" class="hero-description">Industrial-grade craftsmanship for bespoke technical solutions. From structural steel to custom artistic metalwork, we deliver excellence in every project.</p>
-            <div class="hero-buttons">
-                <a href="#portfolio" class="btn btn-primary btn-lg">
-                    <span>Explore Portfolio</span>
-                    <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </a>
-                <a href="projects.html" class="btn btn-secondary btn-lg">
-                    <span>Request a Quote</span>
-                </a>
-            </div>
-            <div class="hero-stats">
-                <div class="stat-item">
-                    <div class="stat-number" id="projectsCount">0</div>
-                    <div class="stat-label">Projects Completed</div>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">
-                    <div class="stat-number">15+</div>
-                    <div class="stat-label">Years Experience</div>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">
-                    <div class="stat-number">100%</div>
-                    <div class="stat-label">Quality Rate</div>
-                </div>
-            </div>
-        </div>
-        <div class="slideshow-nav" id="slideshowNav" style="display: none;">
-            <button class="slideshow-btn prev" id="prevSlide" aria-label="Previous slide">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <button class="slideshow-btn next" id="nextSlide" aria-label="Next slide">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-        <div class="slideshow-dots" id="slideshowDots"></div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features-section reveal">
-        <div class="container">
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Technical Mastery</h3>
-                    <p>Advanced MIG, TIG, and Arc welding techniques for superior structural integrity and lasting results.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Precision Design</h3>
-                    <p>Detailed CAD-ready fabrication plans tailored to your exact specifications and project requirements.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Industrial Grade</h3>
-                    <p>Only high-tensile steel and premium alloys used for maximum durability and long-term reliability.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4"/></svg>
-                    </div>
-                    <h3>Client Focused</h3>
-                    <p>Direct collaboration from initial concept to final installation. Your vision, our expertise.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Portfolio Section -->
-    <section id="portfolio" class="portfolio-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Our Work</div>
-                <h2 class="section-title">Featured Projects</h2>
-                <p class="section-subtitle">A showcase of our most challenging and successful metal fabrication projects.</p>
-            </div>
-
-            <div class="portfolio-filter">
-                <button class="filter-btn active" data-filter="all">All Projects</button>
-                <button class="filter-btn" data-filter="welding">Welding</button>
-                <button class="filter-btn" data-filter="fabrication">Fabrication</button>
-                <button class="filter-btn" data-filter="custom">Custom Work</button>
-            </div>
-
-            <div class="portfolio-grid" id="portfolioGrid">
-                <div class="loading-message">Loading portfolio...</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta-section reveal">
-        <div class="container">
-            <div class="cta-content">
-                <div class="cta-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M3 22V7l9-5 9 5v15M9 22v-5h6v5M9 11h.01M15 11h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <h2>Bring Your Vision to Life</h2>
-                <p>Whether it's a large-scale industrial structure or a custom residential project, we deliver excellence on time and on budget.</p>
-                <a href="projects.html" class="btn btn-primary btn-lg">
-                    <span>Start Your Project</span>
-                    <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section id="testimonials" class="testimonials-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Client Reviews</div>
-                <h2 class="section-title">What Clients Say</h2>
-                <p class="section-subtitle">Real feedback from industry leaders who trusted us with their projects.</p>
-            </div>
-
-            <div id="testimonialsGrid" class="testimonials-grid">
-                <div class="loading-message">Loading reviews...</div>
-            </div>
-
-            <div class="testimonial-cta">
-                <p>Have we completed a project for you? We'd love to hear your feedback.</p>
-                <button class="btn btn-primary" id="addTestimonialBtn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4.5L6 21l1.5-7.5L2 9h7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Submit a Review
+            <div class="nav-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="cart-btn" id="cartBtn" aria-label="Open cart" title="Cart">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="cart-badge" style="display:none;">0</span>
                 </button>
             </div>
         </div>
-    </section>
+    </nav>
 
-    <!-- Contact Section -->
-    <section id="contact" class="contact-section reveal">
-        <div class="container">
-            <div class="section-header">
-                <div class="section-badge">Get In Touch</div>
-                <h2 class="section-title">Contact Us</h2>
-                <p class="section-subtitle">Reach out to our team for consultations, quotes, or any questions.</p>
-            </div>
-            <div class="contact-grid">
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <main id="main">
+        <!-- ==================== HERO ==================== -->
+        <section class="hero">
+            <div class="hero-bg-image" id="heroBgImage" style="display:none;"></div>
+            <div class="container">
+                <div class="hero-content">
+                    <span class="hero-eyebrow">JOWEFCO Technical Services</span>
+                    <h1 class="hero-title" id="heroTitle">
+        Metal Engineering.<br>Welding &amp; Fabrication.<br><span class="accent">Technical Services.</span>
+                    </h1>
+                    <p class="hero-subtitle" id="heroSubtitle">
+                        Professional welding, metal fabrication, structural steelwork, and engineering services for residential, commercial, and industrial projects across Port Harcourt, Rivers State, and Nigeria.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="contact.html" class="btn btn-red btn-lg">
+                            <span>Get a Quote</span>
+                            <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </a>
+                        <a href="services.html" class="btn btn-secondary btn-lg" style="color:#FFFFFF;border-color:rgba(255,255,255,0.4);">View Services</a>
                     </div>
-                    <h3>Phone</h3>
-                    <p id="contactPhone">Loading...</p>
-                    <a href="#" class="contact-link" id="callLink">
-                        Call Now
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h3>Email</h3>
-                    <p id="contactEmail">Loading...</p>
-                    <a href="#" class="contact-link" id="emailLink">
-                        Send Email
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-                <div class="contact-card">
-                    <div class="contact-icon-wrapper">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3"/></svg>
-                    </div>
-                    <h3>Workshop</h3>
-                    <p id="contactAddress">Loading...</p>
-                    <a href="#" class="contact-link" id="locationLink">
-                        View on Map
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Portfolio Modal -->
-    <div id="portfolioModal" class="modal">
-        <div class="modal-content portfolio-modal">
-            <button class="modal-close" aria-label="Close">&times;</button>
-            <div class="portfolio-modal-container">
-                <div class="portfolio-modal-media" id="portfolioModalMedia"></div>
-                <div class="portfolio-modal-details">
-                    <div class="portfolio-modal-category" id="portfolioModalCategory"></div>
-                    <h2 id="portfolioModalTitle"></h2>
-                    <p id="portfolioModalDescription"></p>
-                    <div class="portfolio-modal-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">Completed:</span>
-                            <span class="meta-value" id="portfolioModalDate"></span>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <div class="hero-stat-number">15+</div>
+                            <div class="hero-stat-label">Years Experience</div>
                         </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Service:</span>
-                            <span class="meta-value" id="portfolioModalType"></span>
+                        <div class="hero-stat">
+                            <div class="hero-stat-number">500+</div>
+                            <div class="hero-stat-label">Projects Completed</div>
+                        </div>
+                        <div class="hero-stat">
+                            <div class="hero-stat-number">100%</div>
+                            <div class="hero-stat-label">Quality Commitment</div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <!-- User Registration Modal -->
-    <div id="userRegistrationModal" class="modal">
-        <div class="modal-content registration-modal">
-            <div class="registration-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <!-- ==================== SERVICES ==================== -->
+        <section id="services" class="reveal">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-badge">What We Do</span>
+                    <h2 class="section-title">Our Core Services</h2>
+                    <p class="section-subtitle">Five service lines covering the full range of welding, fabrication, and engineering needs for Nigerian clients.</p>
+                </div>
+                <div class="services-grid">
+                    <a href="services/welding.html" class="service-card">
+                        <div class="service-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Welding Services</h3>
+                        <p>MIG, TIG, and arc welding for structural, industrial, and custom projects on steel, stainless, and alloys.</p>
+                        <span class="service-card-link">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </a>
+                    <a href="services/metal-fabrication.html" class="service-card">
+                        <div class="service-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Metal Fabrication</h3>
+                        <p>Custom fabrication of structures, frames, gates, doors, and architectural metalwork from drawings or your spec.</p>
+                        <span class="service-card-link">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </a>
+                    <a href="services/structural-steel.html" class="service-card">
+                        <div class="service-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M3 22V7l9-5 9 5v15M9 22v-5h6v5M9 11h.01M15 11h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Structural Steelwork</h3>
+                        <p>Beams, columns, trusses, mezzanine floors, and staircases for construction and industrial applications.</p>
+                        <span class="service-card-link">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </a>
+                    <a href="services/custom-metal-doors.html" class="service-card">
+                        <div class="service-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M3 21h18M9 7v6M15 7v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Custom Metal Doors &amp; Security</h3>
+                        <p>Reinforced security doors, automated gates, window bars, and railings built to your specifications.</p>
+                        <span class="service-card-link">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </a>
+                    <a href="services/technical-services.html" class="service-card">
+                        <div class="service-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>Technical Services</h3>
+                        <p>Industrial repairs, equipment installation, plant maintenance, and on-site engineering support.</p>
+                        <span class="service-card-link">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </a>
+                </div>
             </div>
-            <h2>Welcome to JOWEFCO</h2>
-            <p>Please share your contact details so we can serve you better.</p>
-            <form id="userRegistrationForm">
-                <div class="form-group">
-                    <label for="regName">Full Name</label>
-                    <input type="text" id="regName" placeholder="e.g. John Doe" required>
-                </div>
-                <div class="form-group">
-                    <label for="regPhone">Phone Number</label>
-                    <input type="tel" id="regPhone" placeholder="e.g. 08012345678" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Continue</button>
-            </form>
-        </div>
-    </div>
+        </section>
 
-    <!-- Testimonial Modal -->
-    <div id="testimonialModal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close" aria-label="Close">&times;</button>
-            <h2>Share Your Review</h2>
-            <p>Your feedback helps us improve and helps others choose us with confidence.</p>
-            <form id="testimonialForm">
-                <div class="form-group">
-                    <label for="testimonialName">Full Name</label>
-                    <input type="text" id="testimonialName" placeholder="Your name" required>
+        <!-- ==================== PORTFOLIO PREVIEW ==================== -->
+        <section id="portfolio" class="alt reveal">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-badge">Our Work</span>
+                    <h2 class="section-title">Featured Projects</h2>
+                    <p class="section-subtitle">A selection of recent welding, fabrication, and structural steel projects delivered for Nigerian clients.</p>
                 </div>
-                <div class="form-group">
-                    <label for="testimonialCompany">Company / Project Name (Optional)</label>
-                    <input type="text" id="testimonialCompany" placeholder="e.g. Industrial Plant X">
+                <div class="portfolio-grid" id="portfolioGrid">
+                    <div class="loading-message">Loading projects...</div>
                 </div>
-                <div class="form-group">
-                    <label>Service Rating</label>
-                    <div class="star-rating" id="starRating">
-                        <span class="star" data-rating="1">★</span>
-                        <span class="star" data-rating="2">★</span>
-                        <span class="star" data-rating="3">★</span>
-                        <span class="star" data-rating="4">★</span>
-                        <span class="star" data-rating="5">★</span>
+                <div class="text-center" style="margin-top:2rem;">
+                    <a href="projects.html" class="btn btn-outline btn-lg">View All Projects</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== CTA ==================== -->
+        <section class="cta-strip reveal">
+            <div class="container">
+                <div class="cta-strip-content">
+                    <div class="cta-strip-text">
+                        <h2>Ready to start your project?</h2>
+                        <p>From a single custom door to multi-tonne structural steel — get a quote within one business day.</p>
                     </div>
-                    <input type="hidden" id="testimonialRating" value="5">
+                    <div class="cta-strip-actions">
+                        <a href="contact.html" class="btn btn-red btn-lg">Request a Quote</a>
+                        <a href="shop.html" class="btn btn-secondary btn-lg">Visit Shop</a>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="testimonialText">Your Feedback</label>
-                    <textarea id="testimonialText" rows="5" placeholder="Tell us about your experience working with us..." required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Submit Review</button>
-            </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== CART DRAWER (shared) ==================== -->
+    <div class="cart-overlay" id="cartOverlay" onclick="JOWEFCO.closeCart()"></div>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart">
+        <div class="cart-header">
+            <h3>Shopping Cart</h3>
+            <button class="cart-close" onclick="JOWEFCO.closeCart()" aria-label="Close cart">×</button>
         </div>
-    </div>
+        <div class="cart-body" id="cartBody"></div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total</span>
+                <span class="cart-total-amount" id="cartTotalAmount">₦0</span>
+            </div>
+            <button class="btn btn-primary btn-full" id="cartCheckoutBtn" onclick="JOWEFCO.goToCheckout()">Proceed to Checkout</button>
+            <a href="shop.html" style="display:block; text-align:center; margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary);">Continue shopping</a>
+        </div>
+    </aside>
 
-    <!-- WhatsApp Floating Button -->
-    <a href="#" id="whatsappBtn" class="whatsapp-float" title="Chat with us on WhatsApp" aria-label="WhatsApp">
-        <svg viewBox="0 0 32 32" fill="currentColor">
-            <path d="M16 0C7.164 0 0 7.163 0 16c0 2.825.738 5.487 2.031 7.794L.05 31.95l8.331-2.019A15.923 15.923 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333c-2.387 0-4.713-.638-6.756-1.85l-.481-.287-5.006 1.213 1.238-4.888-.313-.5A13.259 13.259 0 012.667 16c0-7.35 5.983-13.333 13.333-13.333S29.333 8.65 29.333 16 23.35 29.333 16 29.333z"/>
-            <path d="M23.094 19.45c-.4-.2-2.369-1.169-2.737-1.3-.369-.131-.637-.2-.906.2-.269.4-1.038 1.3-1.275 1.569-.237.269-.475.3-.875.1-.4-.2-1.688-.619-3.213-1.975-1.188-1.056-1.988-2.362-2.219-2.762-.231-.4-.025-.619.175-.819.181-.181.4-.475.6-.712.2-.238.269-.4.4-.669.131-.269.069-.5-.031-.7-.1-.2-.906-2.181-1.244-2.987-.331-.794-.662-.688-.906-.7-.237-.012-.506-.012-.775-.012s-.706.1-1.075.5c-.369.4-1.406 1.375-1.406 3.35s1.444 3.888 1.644 4.156c.2.269 2.819 4.306 6.831 6.038.956.413 1.7.656 2.281.844.962.306 1.837.262 2.531.162.769-.112 2.369-.969 2.706-1.906.337-.938.337-1.738.237-1.906-.1-.169-.369-.269-.769-.469z"/>
-        </svg>
-    </a>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <p>Please wait...</p>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
-
-    <!-- Footer -->
+    <!-- ==================== FOOTER ==================== -->
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
                     <div class="footer-logo">
-                        <div class="logo-icon-wrapper">
-                            <svg viewBox="0 0 100 100" class="logo-svg" fill="none">
-                                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"/>
-                                <path d="M35 25 L65 25 L50 45 L65 45 L35 75 L45 55 L35 55 Z" fill="currentColor"/>
-                            </svg>
-                        </div>
-                        <span class="logo-text">JOWEFCO</span>
+                        <img src="logo.jpg" alt="JOWEFCO Technical Services" class="logo-img logo-img-footer">
                     </div>
-                    <p class="footer-tagline">Precision engineering and technical mastery since 2011.</p>
-                    <div class="footer-social" id="footerSocial">
-                        <!-- Social links loaded dynamically from Firebase -->
-                    </div>
+                    <p class="footer-tagline">Professional welding, fabrication, and engineering services based in Port Harcourt, Rivers State, Nigeria. Precision workmanship since 2011.</p>
+                    <div class="footer-social" id="footerSocial"></div>
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
                     <ul class="footer-links">
-                        <li><a href="#home">Home</a></li>
-                        <li><a href="#portfolio">Portfolio</a></li>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="services.html">Services</a></li>
+                        <li><a href="projects.html">Projects</a></li>
                         <li><a href="shop.html">Shop</a></li>
-                        <li><a href="projects.html">Book Project</a></li>
-                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Our Services</h4>
                     <ul class="footer-links">
-                        <li><a href="projects.html">Structural Welding</a></li>
-                        <li><a href="projects.html">Precision Fabrication</a></li>
-                        <li><a href="projects.html">Custom Metalwork</a></li>
-                        <li><a href="projects.html">Industrial Repairs</a></li>
+                        <li><a href="services/welding.html">Welding Services</a></li>
+                        <li><a href="services/metal-fabrication.html">Metal Fabrication</a></li>
+                        <li><a href="services/structural-steel.html">Structural Steelwork</a></li>
+                        <li><a href="services/custom-metal-doors.html">Custom Metal Doors</a></li>
+                        <li><a href="services/technical-services.html">Technical Services</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -436,6 +334,56 @@
         </div>
     </footer>
 
+    <!-- ==================== FLOATING UI ==================== -->
+    <a href="#" id="whatsappBtn" class="whatsapp-float" target="_blank" rel="noopener" aria-label="WhatsApp">
+        <svg viewBox="0 0 32 32" fill="currentColor">
+            <path d="M16 0C7.164 0 0 7.163 0 16c0 2.825.738 5.487 2.031 7.794L.05 31.95l8.331-2.019A15.923 15.923 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333c-2.387 0-4.713-.638-6.756-1.85l-.481-.287-5.006 1.213 1.238-4.888-.313-.5A13.259 13.259 0 012.667 16c0-7.35 5.983-13.333 13.333-13.333S29.333 8.65 29.333 16 23.35 29.333 16 29.333z"/>
+            <path d="M23.094 19.45c-.4-.2-2.369-1.169-2.737-1.3-.369-.131-.637-.2-.906.2-.269.4-1.038 1.3-1.275 1.569-.237.269-.475.3-.875.1-.4-.2-1.688-.619-3.213-1.975-1.188-1.056-1.988-2.362-2.219-2.762-.231-.4-.025-.619.175-.819.181-.181.4-.475.6-.712.2-.238.269-.4.4-.669.131-.269.069-.5-.031-.7-.1-.2-.906-2.181-1.244-2.987-.331-.794-.662-.688-.906-.7-.237-.012-.506-.012-.775-.012s-.706.1-1.075.5c-.369.4-1.406 1.375-1.406 3.35s1.444 3.888 1.644 4.156c.2.269 2.819 4.306 6.831 6.038.956.413 1.7.656 2.281.844.962.306 1.837.262 2.531.162.769-.112 2.369-.969 2.706-1.906.337-.938.337-1.738.237-1.906-.1-.169-.369-.269-.769-.469z"/>
+        </svg>
+    </a>
+
+    <div id="toast" class="toast"></div>
+    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div><p>Please wait...</p></div>
+
+    <!-- Portfolio modal -->
+    <div id="portfolioModal" class="modal">
+        <div class="modal-content wide">
+            <button class="modal-close" aria-label="Close" onclick="document.getElementById('portfolioModal').classList.remove('active')">×</button>
+            <div id="portfolioModalBody"></div>
+        </div>
+    </div>
+
+    <script type="module" src="common.js"></script>
     <script type="module" src="app.js"></script>
+    <script>
+    // Cart button + checkout navigation
+    document.getElementById('cartBtn').addEventListener('click', () => JOWEFCO.openCart());
+    JOWEFCO.goToCheckout = function() {
+        if (JOWEFCO.cart.getItemCount() === 0) {
+            JOWEFCO.utils.showToast('Your cart is empty', 'error');
+            return;
+        }
+        window.location.href = 'shop.html#checkout';
+    };
+
+    // Portfolio modal opening (used by app.js portfolio renderer)
+    window.openPortfolioModal = function(item) {
+        const body = document.getElementById('portfolioModalBody');
+        if (!body) return;
+        const media = item.mediaType === 'video'
+            ? `<video src="${item.media}" controls style="width:100%;border-radius:10px;margin-bottom:1rem;"></video>`
+            : `<img src="${item.media}" alt="${JOWEFCO.utils.escapeHtml(item.title)}" style="width:100%;border-radius:10px;margin-bottom:1rem;">`;
+        body.innerHTML = `
+            ${media}
+            <span class="section-badge">${JOWEFCO.utils.escapeHtml(item.category || 'Project')}</span>
+            <h2 style="margin:0.5rem 0 1rem 0;">${JOWEFCO.utils.escapeHtml(item.title)}</h2>
+            <p style="color:var(--text-secondary);line-height:1.7;">${JOWEFCO.utils.escapeHtml(item.description || '')}</p>
+        `;
+        document.getElementById('portfolioModal').classList.add('active');
+    };
+    document.getElementById('portfolioModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+    });
+    </script>
 </body>
 </html>
