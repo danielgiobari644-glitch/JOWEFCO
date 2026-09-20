@@ -1,8 +1,11 @@
 // ====================================================================
 // JOWEFCO ADMIN.JS — Full admin dashboard
 // Authentication via Firebase Auth (sign-in + secure password reset).
-// Manages: dashboard stats, products (full CRUD), orders, projects,
-// hero, portfolio, testimonials, contact, social, payments, users.
+// Manages: dashboard stats, products (full CRUD with specs), orders
+// (WhatsApp flow — full detail view + status + payment + delivery),
+// projects, hero, portfolio, testimonials, contact, social, payments
+// (bank transfer), WhatsApp settings, business/workshop settings,
+// users, branding.
 // ====================================================================
 
 import {
@@ -65,9 +68,6 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 });
 
 document.getElementById('viewSiteBtn').addEventListener('click', () => window.open('index.html', '_blank'));
-
-// Theme toggle (in admin topbar) — common.js already wires the one with id="themeToggle"
-// but we want to confirm we don't re-wire it twice. common.js attaches only if not already.
 
 // ==================== FORGOT PASSWORD ====================
 const forgotLink = document.getElementById('forgotPasswordLink');
@@ -161,7 +161,22 @@ function switchTab(tabName) {
     document.querySelectorAll('.admin-tab').forEach(tab =>
         tab.classList.toggle('active', tab.id === tabName + 'Tab'));
     // Page title
-    const titles = { dashboard:'Dashboard', shop:'Products', orders:'Orders', projects:'Project Inquiries', hero:'Hero Section', portfolio:'Portfolio', testimonials:'Reviews', contact:'Contact Info', social:'Social Links', payments:'Payment Settings', users:'Users' };
+    const titles = {
+        dashboard: 'Dashboard',
+        shop: 'Products',
+        orders: 'Orders',
+        projects: 'Project Inquiries',
+        hero: 'Hero Section',
+        portfolio: 'Portfolio',
+        testimonials: 'Reviews',
+        contact: 'Contact Info',
+        social: 'Social Links',
+        payments: 'Bank Transfer',
+        whatsapp: 'WhatsApp Settings',
+        business: 'Business Settings',
+        users: 'Users',
+        branding: 'Logo & Branding'
+    };
     document.getElementById('adminPageTitle').textContent = titles[tabName] || 'Dashboard';
     closeSidebar();
     loadTabContent(tabName);
@@ -179,7 +194,10 @@ async function loadTabContent(tabName) {
         case 'contact': await loadContactSettings(); break;
         case 'social': await loadSocialSettings(); break;
         case 'payments': await loadPaymentSettings(); break;
+        case 'whatsapp': await loadWhatsAppSettings(); break;
+        case 'business': await loadBusinessSettings(); break;
         case 'users': await loadUsersManagement(); break;
+        case 'branding': await loadBrandingSettings(); break;
     }
 }
 
@@ -323,6 +341,7 @@ window.JOWEFCOAdmin = {
         document.getElementById('productName').value = p.name || '';
         document.getElementById('productCategory').value = p.category || '';
         document.getElementById('productDescription').value = p.description || '';
+        document.getElementById('productSpecifications').value = p.specifications || '';
         document.getElementById('productPrice').value = (typeof p.price === 'number') ? p.price : (p.priceMin || '');
         document.getElementById('productStock').value = (typeof p.stock === 'number') ? p.stock : '';
         document.getElementById('productMediaType').value = p.mediaType || 'image';
@@ -373,6 +392,7 @@ async function onProductFormSubmit(e) {
     const id = document.getElementById('productId').value;
     const name = document.getElementById('productName').value.trim();
     const description = document.getElementById('productDescription').value.trim();
+    const specifications = document.getElementById('productSpecifications').value.trim() || null;
     const price = parseFloat(document.getElementById('productPrice').value);
     const stockInput = document.getElementById('productStock').value;
     const stock = stockInput === '' ? null : parseInt(stockInput, 10);
@@ -388,7 +408,7 @@ async function onProductFormSubmit(e) {
     }
 
     const payload = {
-        name, description, price, stock, category, mediaType, media, available, featured,
+        name, description, specifications, price, stock, category, mediaType, media, available, featured,
         // Keep legacy fields for backwards compatibility
         priceMin: price, priceMax: price
     };
@@ -413,12 +433,56 @@ async function onProductFormSubmit(e) {
     }
 }
 
-// ==================== ORDERS MANAGEMENT ====================
+// ==================== ORDERS MANAGEMENT (WhatsApp ordering flow) ====================
+// The shopOrders collection is the new single-order-per-product collection
+// created when a customer clicks "Order on WhatsApp" on a product page.
+// Each order starts at orderStatus='awaiting_discussion' and
+// paymentStatus='pending'. The admin walks each order through the
+// status flow from the Orders tab + #orderModal.
+
+const ORDER_STATUSES = [
+    'awaiting_discussion',
+    'order_agreed',
+    'payment_pending',
+    'payment_confirmed',
+    'delivery_scheduled',
+    'out_for_delivery',
+    'delivered',
+    'cancelled'
+];
+
+// Map any order/payment status to an existing status-pill CSS class
+// (styles.css defines .pending/.approved/.completed/.paid/.active/.rejected/.cancelled/.unavailable).
+function pillClassFor(status) {
+    const s = String(status || '').toLowerCase();
+    if (['cancelled', 'rejected', 'unavailable'].includes(s)) return 'cancelled';
+    if (['delivered', 'completed', 'paid', 'payment_confirmed', 'approved', 'active'].includes(s)) return 'paid';
+    if (['pending', 'awaiting_discussion', 'payment_pending', 'order_agreed', 'delivery_scheduled', 'out_for_delivery'].includes(s)) return 'pending';
+    return '';
+}
+
+function statusPillHtml(status, fallback) {
+    const s = String(status || fallback || '').toLowerCase();
+    const label = (s || fallback || '—').replace(/_/g, ' ');
+    return `<span class="status-pill ${pillClassFor(s)}">${utils.escapeHtml(label)}</span>`;
+}
+
+// Build a WhatsApp deep-link to message the customer about their order.
+function buildCustomerWhatsAppUrl(order) {
+    const number = order.customerWhatsapp || order.customerPhone || '';
+    if (!number) return '#';
+    const msg = `Hello ${order.customerName || 'there'}, this is JOWEFCO regarding your order ${order.orderReference || ''}...`;
+    return utils.buildWhatsAppUrl(number, msg) || '#';
+}
+
+// Build a tel: link for the customer.
+function buildCustomerCallUrl(order) {
+    const phone = String(order.customerPhone || '').replace(/[^\d+]/g, '');
+    return phone ? `tel:${phone}` : '#';
+}
+
 async function loadOrdersManagement() {
-    if (ordersListener) { ordersListener(); ordersListener = null; }
-    ordersListener = onSnapshot(collection(db, 'shopOrders'), async () => {
-        await loadOrders();
-    });
+    // Wire filter bar buttons (idempotent)
     document.querySelectorAll('#ordersTab .filter-btn').forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll('#ordersTab .filter-btn').forEach(b => b.classList.remove('active'));
@@ -427,20 +491,22 @@ async function loadOrdersManagement() {
             renderOrdersTable();
         };
     });
-}
-
-async function loadOrders() {
-    try {
-        const snap = await getDocs(collection(db, 'shopOrders'));
-        allOrders = [];
-        snap.forEach(d => allOrders.push({ id: d.id, ...d.data() }));
-        allOrders.sort((a, b) => {
-            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return tb - ta;
-        });
-        renderOrdersTable();
-    } catch (e) { warn(e); }
+    // Set up real-time listener
+    if (ordersListener) { ordersListener(); ordersListener = null; }
+    ordersListener = onSnapshot(
+        collection(db, 'shopOrders'),
+        (snap) => {
+            allOrders = [];
+            snap.forEach(d => allOrders.push({ id: d.id, ...d.data() }));
+            allOrders.sort((a, b) => {
+                const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+                const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+                return tb - ta;
+            });
+            renderOrdersTable();
+        },
+        (err) => warn(err)
+    );
 }
 
 function renderOrdersTable() {
@@ -448,76 +514,245 @@ function renderOrdersTable() {
     if (!list) return;
     let filtered = allOrders;
     if (currentOrdersFilter !== 'all') {
-        filtered = allOrders.filter(o => (o.orderStatus || 'requested') === currentOrdersFilter);
+        filtered = allOrders.filter(o => (o.orderStatus || 'awaiting_discussion') === currentOrdersFilter);
     }
     if (filtered.length === 0) {
-        list.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:1.5rem;">No orders found.</td></tr>';
+        list.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-tertiary);padding:1.5rem;">No orders found.</td></tr>';
         return;
     }
     list.innerHTML = filtered.map(o => {
-        const items = (o.items && o.items.length)
-            ? `${o.items.length} item(s): ${o.items.map(i => i.productName).join(', ').slice(0, 60)}`
-            : utils.escapeHtml(o.productName || '—');
+        const customerCell = `<strong>${utils.escapeHtml(o.customerName || '')}</strong><br><span style="font-size:0.78rem;color:var(--text-tertiary);">${utils.escapeHtml(o.customerPhone || '')}</span>`;
+        const productCell = `${utils.escapeHtml(o.productName || '—')}<br><span style="font-size:0.78rem;color:var(--text-tertiary);">Qty: ${o.quantity || 1}</span>`;
+        const listedPrice = utils.formatPrice(o.listedPrice || 0);
+        const agreedPrice = (typeof o.agreedPrice === 'number')
+            ? utils.formatPrice(o.agreedPrice)
+            : '<span style="color:var(--text-tertiary);">—</span>';
         return `<tr>
-            <td><strong>${utils.escapeHtml(o.customerName||'')}</strong><br><span style="font-size:0.78rem;color:var(--text-tertiary);">${utils.escapeHtml(o.customerPhone||'')}</span></td>
-            <td style="max-width:280px;font-size:0.85rem;">${items}</td>
-            <td><strong>${utils.formatPrice(o.amount||0)}</strong></td>
-            <td><span class="status-pill ${o.paymentStatus||'pending'}">${o.paymentStatus||'pending'}</span></td>
-            <td><span class="status-pill ${o.orderStatus||'requested'}">${o.orderStatus||'requested'}</span></td>
+            <td><strong>${utils.escapeHtml(o.orderReference || '—')}</strong></td>
+            <td>${customerCell}</td>
+            <td style="max-width:240px;font-size:0.85rem;">${productCell}</td>
+            <td>${listedPrice}</td>
+            <td>${agreedPrice}</td>
+            <td>${statusPillHtml(o.paymentStatus, 'pending')}</td>
+            <td>${statusPillHtml(o.orderStatus, 'awaiting_discussion')}</td>
             <td style="font-size:0.85rem;color:var(--text-tertiary);">${utils.formatDate(o.createdAt)}</td>
             <td><button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.viewOrder('${o.id}')">View</button></td>
         </tr>`;
     }).join('');
 }
 
-window.JOWEFCOAdmin.viewOrder = function (id) {
+function viewOrder(id) {
     const o = allOrders.find(x => x.id === id);
     if (!o) return;
-    const itemsList = (o.items && o.items.length)
-        ? `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin-top:0.5rem;">
-            <thead><tr><th style="text-align:left;padding:0.4rem 0;">Item</th><th style="text-align:center;padding:0.4rem 0;">Qty</th><th style="text-align:right;padding:0.4rem 0;">Price</th></tr></thead>
-            <tbody>${o.items.map(i => `<tr><td style="padding:0.4rem 0;">${utils.escapeHtml(i.productName)}</td><td style="text:center;padding:0.4rem 0;">${i.quantity}</td><td style="text-align:right;padding:0.4rem 0;">${utils.formatPrice(i.price)}</td></tr>`).join('')}</tbody>
-          </table>`
-        : `<p>${utils.escapeHtml(o.productName||'')}</p>`;
+    const waUrl = buildCustomerWhatsAppUrl(o);
+    const callUrl = buildCustomerCallUrl(o);
+    const productImage = o.productImageUrl
+        ? `<img src="${utils.escapeHtml(o.productImageUrl)}" alt="${utils.escapeHtml(o.productName || '')}" style="width:100%;max-height:200px;object-fit:contain;background:var(--bg-tertiary);border:1px solid var(--surface-border);border-radius:var(--radius-sm);" onerror="this.style.display='none'">`
+        : '';
+
+    const waIcon = `<svg viewBox="0 0 32 32" fill="currentColor" style="width:16px;height:16px;margin-right:0.35rem;vertical-align:middle;"><path d="M16 0C7.164 0 0 7.163 0 16c0 2.825.738 5.487 2.031 7.794L.05 31.95l8.331-2.019A15.923 15.923 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333c-2.387 0-4.713-.638-6.756-1.85l-.481-.287-5.006 1.213 1.238-4.888-.313-.5A13.259 13.259 0 012.667 16c0-7.35 5.983-13.333 13.333-13.333S29.333 8.65 29.333 16 23.35 29.333 16 29.333z"/><path d="M23.094 19.45c-.4-.2-2.369-1.169-2.737-1.3-.369-.131-.637-.2-.906.2-.269.4-1.038 1.3-1.275 1.569-.237.269-.475.3-.875.1-.4-.2-1.688-.619-3.213-1.975-1.188-1.056-1.988-2.362-2.219-2.762-.231-.4-.025-.619.175-.819.181-.181.4-.475.6-.712.2-.238.269-.4.4-.669.131-.269.069-.5-.031-.7-.1-.2-.906-2.181-1.244-2.987-.331-.794-.662-.688-.906-.7-.237-.012-.506-.012-.775-.012s-.706.1-1.075.5c-.369.4-1.406 1.375-1.406 3.35s1.444 3.888 1.644 4.156c.2.269 2.819 4.306 6.831 6.038.956.413 1.7.656 2.281.844.962.306 1.837.262 2.531.162.769-.112 2.369-.969 2.706-1.906.337-.938.337-1.738.237-1.906-.1-.169-.369-.269-.769-.469z"/></svg>`;
+
     const body = document.getElementById('orderModalBody');
     body.innerHTML = `
-        <p><strong>Customer:</strong> ${utils.escapeHtml(o.customerName||'')}</p>
-        <p><strong>Phone:</strong> ${utils.escapeHtml(o.customerPhone||'')}</p>
-        ${o.customerEmail ? `<p><strong>Email:</strong> ${utils.escapeHtml(o.customerEmail)}</p>` : ''}
-        ${o.deliveryLocation ? `<p><strong>Delivery:</strong> ${utils.escapeHtml(o.deliveryLocation)}</p>` : ''}
-        ${o.notes ? `<p><strong>Notes:</strong> ${utils.escapeHtml(o.notes)}</p>` : ''}
-        <h3 style="margin-top:1.25rem;">Items</h3>
-        ${itemsList}
-        <p style="margin-top:1rem;"><strong>Total:</strong> ${utils.formatPrice(o.amount||0)}</p>
-        <p><strong>Payment:</strong> <span class="status-pill ${o.paymentStatus||'pending'}">${o.paymentStatus||'pending'}</span></p>
-        <p><strong>Status:</strong> <span class="status-pill ${o.orderStatus||'requested'}">${o.orderStatus||'requested'}</span></p>
-        <p><strong>Date:</strong> ${utils.formatDate(o.createdAt)}</p>
-        <h3 style="margin-top:1.25rem;">Update Status</h3>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrder('${o.id}','requested')">Requested</button>
-            <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrder('${o.id}','confirmed')">Confirmed</button>
-            <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrder('${o.id}','paid')">Paid</button>
-            <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrder('${o.id}','completed')">Completed</button>
-            <button class="btn btn-danger btn-sm" onclick="JOWEFCOAdmin.updateOrder('${o.id}','cancelled')">Cancel</button>
+        <!-- Reference line -->
+        <p style="margin:0 0 1rem 0;font-size:0.85rem;color:var(--text-tertiary);">
+            Order Reference: <strong style="color:var(--text-primary);">${utils.escapeHtml(o.orderReference || '—')}</strong>
+            • Created ${utils.formatDate(o.createdAt)}
+        </p>
+
+        <!-- Customer -->
+        <div style="margin-bottom:1.25rem;">
+            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Customer</h3>
+            <p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Name:</strong> ${utils.escapeHtml(o.customerName || '—')}</p>
+            <p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Phone:</strong> ${utils.escapeHtml(o.customerPhone || '—')}</p>
+            ${o.customerWhatsapp ? `<p style="margin:0.15rem 0;font-size:0.92rem;"><strong>WhatsApp:</strong> ${utils.escapeHtml(o.customerWhatsapp)}</p>` : ''}
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.65rem;">
+                <button class="btn btn-primary btn-sm" onclick="JOWEFCOAdmin.contactCustomerWhatsApp('${o.id}')">${waIcon} WhatsApp Customer</button>
+                <a href="${callUrl}" class="btn btn-outline btn-sm" style="text-decoration:none;">Call Customer</a>
+            </div>
+        </div>
+
+        <!-- Product -->
+        <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--surface-border);">
+            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Product</h3>
+            ${productImage ? `<div style="margin-bottom:0.75rem;">${productImage}</div>` : ''}
+            <p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Product:</strong> ${utils.escapeHtml(o.productName || '—')}</p>
+            ${o.productId ? `<p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Product ID:</strong> <code>${utils.escapeHtml(o.productId)}</code></p>` : ''}
+            <p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Quantity:</strong> ${o.quantity || 1}</p>
+            <p style="margin:0.15rem 0;font-size:0.92rem;"><strong>Listed Price:</strong> ${utils.formatPrice(o.listedPrice || 0)}</p>
+        </div>
+
+        <!-- Financial -->
+        <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--surface-border);">
+            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Financial</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="orderAgreedPrice">Agreed / Final Price (₦)</label>
+                    <input type="number" id="orderAgreedPrice" step="0.01" min="0" value="${typeof o.agreedPrice === 'number' ? o.agreedPrice : ''}" placeholder="Set after WhatsApp discussion">
+                    <p style="font-size:0.78rem;color:var(--text-tertiary);margin-top:0.35rem;">Different from listed price? Update after agreeing the final amount on WhatsApp.</p>
+                </div>
+                <div class="form-group">
+                    <label>Payment Status</label>
+                    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                        ${statusPillHtml(o.paymentStatus, 'pending')}
+                        <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.confirmPayment('${o.id}')">
+                            ${o.paymentStatus === 'confirmed' ? 'Mark as Pending' : 'Confirm Payment'}
+                        </button>
+                    </div>
+                    <p style="font-size:0.78rem;color:var(--text-tertiary);margin-top:0.35rem;">Toggles between pending and confirmed. Confirming payment also moves the order status to <strong>payment_confirmed</strong>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery -->
+        <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--surface-border);">
+            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Delivery</h3>
+            <div class="form-group">
+                <label for="orderDeliveryAddress">Delivery Address</label>
+                <input type="text" id="orderDeliveryAddress" value="${utils.escapeHtml(o.deliveryAddress || o.deliveryLocation || '')}" placeholder="Where to deliver">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="orderDeliveryDate">Delivery Date (as discussed)</label>
+                    <input type="text" id="orderDeliveryDate" value="${utils.escapeHtml(o.deliveryDate || '')}" placeholder="e.g. Tue 12 Nov">
+                </div>
+                <div class="form-group">
+                    <label for="orderDeliveryTime">Delivery Time (as discussed)</label>
+                    <input type="text" id="orderDeliveryTime" value="${utils.escapeHtml(o.deliveryTime || '')}" placeholder="e.g. 2:00 PM">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="orderDeliveryInstructions">Delivery Instructions</label>
+                <textarea id="orderDeliveryInstructions" rows="3" placeholder="Notes for the delivery (e.g. 'Call 30 mins before arrival')">${utils.escapeHtml(o.deliveryInstructions || '')}</textarea>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--surface-border);">
+            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Order Status</h3>
+            <p style="margin:0 0 0.65rem 0;font-size:0.92rem;">Current: ${statusPillHtml(o.orderStatus, 'awaiting_discussion')}</p>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','awaiting_discussion')">Awaiting Discussion</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','order_agreed')">Order Agreed</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','payment_pending')">Payment Pending</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','payment_confirmed')">Payment Confirmed</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','delivery_scheduled')">Delivery Scheduled</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','out_for_delivery')">Out for Delivery</button>
+                <button class="btn btn-outline btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','delivered')">Delivered</button>
+                <button class="btn btn-danger btn-sm" onclick="JOWEFCOAdmin.updateOrderStatus('${o.id}','cancelled')">Cancel Order</button>
+            </div>
+        </div>
+
+        <!-- Footer actions -->
+        <div style="padding-top:1rem;border-top:1px solid var(--surface-border);display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary" onclick="JOWEFCOAdmin.saveOrderDetails('${o.id}')">Save Changes</button>
+            <a href="${waUrl}" target="_blank" rel="noopener" class="btn btn-red" style="text-decoration:none;">${waIcon} WhatsApp Customer</a>
         </div>
     `;
     document.getElementById('orderModal').classList.add('active');
-};
+}
 
-window.JOWEFCOAdmin.updateOrder = async function (id, status) {
-    utils.showLoading(true, 'Updating order...');
+async function updateOrderStatus(id, status) {
+    utils.showLoading(true, 'Updating status...');
     try {
         await updateDoc(doc(db, 'shopOrders', id), { orderStatus: status });
-        utils.showToast(`Order marked as ${status}`, 'success');
-        document.getElementById('orderModal').classList.remove('active');
-        await loadOrders();
+        utils.showToast(`Order marked as ${status.replace(/_/g, ' ')}`, 'success');
+        // Optimistic local update + re-render modal so admin sees the change immediately
+        const o = allOrders.find(x => x.id === id);
+        if (o) { o.orderStatus = status; viewOrder(id); }
+        renderOrdersTable();
     } catch (e) {
         warn(e);
-        utils.showToast('Could not update order', 'error');
+        utils.showToast('Could not update order status', 'error');
     } finally {
         utils.showLoading(false);
     }
-};
+}
+
+async function confirmPayment(id) {
+    const o = allOrders.find(x => x.id === id);
+    if (!o) return;
+    const newStatus = o.paymentStatus === 'confirmed' ? 'pending' : 'confirmed';
+    const payload = { paymentStatus: newStatus };
+    // If confirming, also auto-set orderStatus to payment_confirmed
+    if (newStatus === 'confirmed') payload.orderStatus = 'payment_confirmed';
+    utils.showLoading(true, 'Updating payment...');
+    try {
+        await updateDoc(doc(db, 'shopOrders', id), payload);
+        utils.showToast(`Payment ${newStatus}`, 'success');
+        // Optimistic local update
+        o.paymentStatus = newStatus;
+        if (newStatus === 'confirmed') o.orderStatus = 'payment_confirmed';
+        else if (o.orderStatus === 'payment_confirmed') o.orderStatus = 'payment_pending';
+        viewOrder(id);
+        renderOrdersTable();
+    } catch (e) {
+        warn(e);
+        utils.showToast('Could not update payment status', 'error');
+    } finally {
+        utils.showLoading(false);
+    }
+}
+
+async function saveOrderDetails(id) {
+    const agreedPriceStr = document.getElementById('orderAgreedPrice')?.value;
+    const agreedPrice = (agreedPriceStr === undefined || agreedPriceStr === '') ? null : parseFloat(agreedPriceStr);
+    const payload = {
+        agreedPrice: (typeof agreedPrice === 'number' && !isNaN(agreedPrice)) ? agreedPrice : null,
+        deliveryAddress: (document.getElementById('orderDeliveryAddress')?.value || '').trim(),
+        deliveryDate: (document.getElementById('orderDeliveryDate')?.value || '').trim(),
+        deliveryTime: (document.getElementById('orderDeliveryTime')?.value || '').trim(),
+        deliveryInstructions: (document.getElementById('orderDeliveryInstructions')?.value || '').trim()
+    };
+    utils.showLoading(true, 'Saving order details...');
+    try {
+        await updateDoc(doc(db, 'shopOrders', id), payload);
+        utils.showToast('Order details saved', 'success');
+        // Optimistic local update + re-render
+        const o = allOrders.find(x => x.id === id);
+        if (o) { Object.assign(o, payload); viewOrder(id); }
+        renderOrdersTable();
+    } catch (e) {
+        warn(e);
+        utils.showToast('Could not save order details', 'error');
+    } finally {
+        utils.showLoading(false);
+    }
+}
+
+function contactCustomerWhatsApp(id) {
+    const o = allOrders.find(x => x.id === id);
+    if (!o) return;
+    const url = buildCustomerWhatsAppUrl(o);
+    if (url && url !== '#') {
+        window.open(url, '_blank', 'noopener');
+    } else {
+        utils.showToast('No WhatsApp number on file for this customer', 'error');
+    }
+}
+
+function callCustomer(id) {
+    const o = allOrders.find(x => x.id === id);
+    if (!o) return;
+    const url = buildCustomerCallUrl(o);
+    if (url && url !== '#') {
+        window.location.href = url;
+    } else {
+        utils.showToast('No phone number on file for this customer', 'error');
+    }
+}
+
+// Attach order functions to global admin namespace (used by inline onclick handlers)
+Object.assign(window.JOWEFCOAdmin, {
+    viewOrder,
+    updateOrderStatus,
+    confirmPayment,
+    saveOrderDetails,
+    contactCustomerWhatsApp,
+    callCustomer,
+    // Backward-compat alias (old name → new behaviour)
+    updateOrder(id, status) { return updateOrderStatus(id, status); }
+});
 
 // ==================== PROJECTS MANAGEMENT ====================
 async function loadProjectsManagement() {
@@ -827,22 +1062,19 @@ window.JOWEFCOAdmin.deleteSocial = async function (id) {
     } catch (e) { warn(e); utils.showToast('Could not delete', 'error'); }
 };
 
-// ==================== PAYMENT SETTINGS ====================
+// ==================== PAYMENT SETTINGS (Bank Transfer) ====================
+// Reads / writes the single `settings/payment` doc. The bank details are
+// shown to customers after they agree the order on WhatsApp — they bank-
+// transfer the agreed amount and send the receipt in the same chat.
 async function loadPaymentSettings() {
     try {
-        const snap = await getDoc(doc(db, 'settings', 'payments'));
+        const snap = await getDoc(doc(db, 'settings', 'payment'));
         if (snap.exists()) {
             const d = snap.data();
-            document.getElementById('currencyCode').value = d.currency || 'NGN';
-            document.getElementById('currencySymbol').value = d.currencySymbol || '₦';
-            if (d.paystack) {
-                document.getElementById('paystackEnabled').value = String(d.paystack.enabled || false);
-                document.getElementById('paystackKey').value = d.paystack.publicKey || '';
-            }
-            if (d.flutterwave) {
-                document.getElementById('flutterwaveEnabled').value = String(d.flutterwave.enabled || false);
-                document.getElementById('flutterwaveKey').value = d.flutterwave.publicKey || '';
-            }
+            document.getElementById('bankNameInput').value = d.bankName || '';
+            document.getElementById('accountNameInput').value = d.accountName || '';
+            document.getElementById('accountNumberInput').value = d.accountNumber || '';
+            document.getElementById('paymentInstructionsInput').value = d.paymentInstructions || '';
         }
     } catch (e) { warn(e); }
     const form = document.getElementById('paymentsForm');
@@ -851,21 +1083,96 @@ async function loadPaymentSettings() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
-                currency: document.getElementById('currencyCode').value || 'NGN',
-                currencySymbol: document.getElementById('currencySymbol').value || '₦',
-                paystack: {
-                    enabled: document.getElementById('paystackEnabled').value === 'true',
-                    publicKey: document.getElementById('paystackKey').value
-                },
-                flutterwave: {
-                    enabled: document.getElementById('flutterwaveEnabled').value === 'true',
-                    publicKey: document.getElementById('flutterwaveKey').value
-                }
+                bankName: document.getElementById('bankNameInput').value.trim(),
+                accountName: document.getElementById('accountNameInput').value.trim(),
+                accountNumber: document.getElementById('accountNumberInput').value.trim(),
+                paymentInstructions: document.getElementById('paymentInstructionsInput').value.trim(),
+                paymentMethod: 'manual',
+                updatedAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Saving...');
+            utils.showLoading(true, 'Saving bank details...');
             try {
-                await setDoc(doc(db, 'settings', 'payments'), payload, { merge: true });
-                utils.showToast('Payment settings saved', 'success');
+                await setDoc(doc(db, 'settings', 'payment'), payload, { merge: true });
+                utils.showToast('Bank transfer details saved', 'success');
+            } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
+            finally { utils.showLoading(false); }
+        });
+    }
+}
+
+// ==================== WHATSAPP SETTINGS ====================
+// Reads / writes `settings/whatsapp`. The number is the one customers
+// reach when they click "Order on WhatsApp" on a product page. The
+// default message is the opening line of the prefilled WhatsApp chat.
+async function loadWhatsAppSettings() {
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'whatsapp'));
+        if (snap.exists()) {
+            const d = snap.data();
+            document.getElementById('whatsappNumberInput').value = d.whatsappNumber || '';
+            document.getElementById('whatsappDefaultMessageInput').value = d.defaultOrderMessage || '';
+            document.getElementById('whatsappInstructionsInput').value = d.instructions || '';
+        }
+    } catch (e) { warn(e); }
+    const form = document.getElementById('whatsappForm');
+    if (!form.dataset.wired) {
+        form.dataset.wired = '1';
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                whatsappNumber: document.getElementById('whatsappNumberInput').value.trim(),
+                defaultOrderMessage: document.getElementById('whatsappDefaultMessageInput').value.trim(),
+                instructions: document.getElementById('whatsappInstructionsInput').value.trim(),
+                updatedAt: Timestamp.now()
+            };
+            utils.showLoading(true, 'Saving WhatsApp settings...');
+            try {
+                await setDoc(doc(db, 'settings', 'whatsapp'), payload, { merge: true });
+                utils.showToast('WhatsApp settings saved', 'success');
+            } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
+            finally { utils.showLoading(false); }
+        });
+    }
+}
+
+// ==================== BUSINESS SETTINGS (workshop, delivery) ====================
+// Reads / writes `settings/business`. The workshop coordinates power
+// the "Get Directions to Workshop" button on product pages.
+async function loadBusinessSettings() {
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'business'));
+        if (snap.exists()) {
+            const d = snap.data();
+            document.getElementById('businessNameInput').value = d.businessName || '';
+            document.getElementById('workshopAddressInput').value = d.workshopAddress || '';
+            document.getElementById('latitudeInput').value = (typeof d.latitude === 'number') ? d.latitude : '';
+            document.getElementById('longitudeInput').value = (typeof d.longitude === 'number') ? d.longitude : '';
+            document.getElementById('mapsUrlInput').value = d.mapsUrl || '';
+            document.getElementById('openingHoursInput').value = d.openingHours || '';
+            document.getElementById('deliveryCoverageInput').value = d.deliveryCoverage || '';
+        }
+    } catch (e) { warn(e); }
+    const form = document.getElementById('businessForm');
+    if (!form.dataset.wired) {
+        form.dataset.wired = '1';
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const latStr = document.getElementById('latitudeInput').value.trim();
+            const lngStr = document.getElementById('longitudeInput').value.trim();
+            const payload = {
+                businessName: document.getElementById('businessNameInput').value.trim(),
+                workshopAddress: document.getElementById('workshopAddressInput').value.trim(),
+                latitude: latStr === '' ? null : parseFloat(latStr),
+                longitude: lngStr === '' ? null : parseFloat(lngStr),
+                mapsUrl: document.getElementById('mapsUrlInput').value.trim(),
+                openingHours: document.getElementById('openingHoursInput').value.trim(),
+                deliveryCoverage: document.getElementById('deliveryCoverageInput').value.trim(),
+                updatedAt: Timestamp.now()
+            };
+            utils.showLoading(true, 'Saving business settings...');
+            try {
+                await setDoc(doc(db, 'settings', 'business'), payload, { merge: true });
+                utils.showToast('Business settings saved', 'success');
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
             finally { utils.showLoading(false); }
         });
@@ -897,14 +1204,89 @@ async function loadUsersManagement() {
     } catch (e) { warn(e); }
 }
 
+// ==================== BRANDING SETTINGS (Logo + tagline) ====================
+async function loadBrandingSettings() {
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'branding'));
+        if (snap.exists()) {
+            const d = snap.data();
+            document.getElementById('brandingLogoUrl').value = d.logoUrl || '';
+            document.getElementById('brandingSiteName').value = d.siteName || '';
+            document.getElementById('brandingTagline').value = d.tagline || '';
+            // Show preview if logo URL set
+            if (d.logoUrl) showBrandingPreview(d.logoUrl);
+        }
+    } catch (e) { warn(e); }
+
+    const form = document.getElementById('brandingForm');
+    if (!form.dataset.wired) {
+        form.dataset.wired = '1';
+
+        // Preview button
+        document.getElementById('previewLogoBtn').addEventListener('click', () => {
+            const url = document.getElementById('brandingLogoUrl').value.trim();
+            if (!url) {
+                utils.showToast('Enter a logo URL first', 'error');
+                return;
+            }
+            showBrandingPreview(url);
+        });
+
+        // Save
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                logoUrl: document.getElementById('brandingLogoUrl').value.trim(),
+                siteName: document.getElementById('brandingSiteName').value.trim(),
+                tagline: document.getElementById('brandingTagline').value.trim(),
+                updatedAt: Timestamp.now()
+            };
+            utils.showLoading(true, 'Saving branding...');
+            try {
+                await setDoc(doc(db, 'settings', 'branding'), payload, { merge: true });
+                utils.showToast('Branding saved. The logo will update across the site on next visit.', 'success');
+            } catch (e) {
+                warn(e);
+                utils.showToast('Could not save branding', 'error');
+            } finally {
+                utils.showLoading(false);
+            }
+        });
+
+        // Reset to default
+        document.getElementById('resetBrandingBtn').addEventListener('click', async () => {
+            if (!confirm('Reset logo to the default logo.jpg? This will clear the saved logo URL.')) return;
+            utils.showLoading(true, 'Resetting...');
+            try {
+                await setDoc(doc(db, 'settings', 'branding'), {
+                    logoUrl: '',
+                    updatedAt: Timestamp.now()
+                }, { merge: true });
+                document.getElementById('brandingLogoUrl').value = '';
+                showBrandingPreview('');
+                utils.showToast('Reset to default logo', 'success');
+            } catch (e) {
+                warn(e);
+                utils.showToast('Could not reset', 'error');
+            } finally {
+                utils.showLoading(false);
+            }
+        });
+    }
+}
+
+function showBrandingPreview(url) {
+    const preview = document.getElementById('brandingLogoPreview');
+    if (!preview) return;
+    if (!url) {
+        preview.innerHTML = '<p style="color:var(--text-tertiary);font-size:0.85rem;margin:0;">Using default logo.jpg</p>';
+        return;
+    }
+    preview.innerHTML = `<img src="${url}" alt="Logo preview" style="max-width:100%;max-height:140px;object-fit:contain;" onerror="this.parentElement.innerHTML='<p style=\\'color:var(--danger);font-size:0.85rem;margin:0;\\'>Could not load image. Check the URL.</p>'">`;
+}
+
 // ==================== INIT ====================
 async function initializeDashboard() {
     // Load current tab
     await loadTabContent(currentTab);
 }
-
-// Expose globally for inline handlers
-window.JOWEFCOAdmin = window.JOWEFCOAdmin || {};
-Object.assign(window.JOWEFCOAdmin, {
-    // functions already attached above
-});

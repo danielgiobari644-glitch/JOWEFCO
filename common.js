@@ -70,12 +70,38 @@ const SOCIAL_ICONS = {
 };
 window.JOWEFCO.SOCIAL_ICONS = SOCIAL_ICONS;
 
-// ==================== DEFAULT CONTACT INFO (fallback) ====================
+// ==================== DEFAULT BUSINESS / WHATSAPP / PAYMENT (fallback) ====================
+// Used only if the admin hasn't configured these in Firestore yet.
+// The UI should never display these as "real" data — it should show a
+// "not yet configured" state when the Firestore doc is missing.
 const DEFAULT_CONTACT = {
-    phone: '+234 801 234 5678',
-    whatsapp: '2348012345678',
-    email: 'info@jowefco.com',
-    address: 'Port Harcourt, Rivers State, Nigeria'
+    phone: '',
+    whatsapp: '',
+    email: '',
+    address: ''
+};
+
+const DEFAULT_BUSINESS = {
+    businessName: 'JOWEFCO Technical Services',
+    workshopAddress: '',
+    latitude: null,
+    longitude: null,
+    mapsUrl: '',
+    openingHours: 'Mon – Sat, 8:00 AM – 6:00 PM (WAT)',
+    deliveryCoverage: 'Port Harcourt, Rivers State, Nigeria'
+};
+
+const DEFAULT_WHATSAPP = {
+    whatsappNumber: '',  // inherits from settings/contact.whatsapp if empty
+    defaultOrderMessage: 'Hello JOWEFCO, I would like to order:',
+    instructions: 'Discuss your order with our team. Final price, delivery arrangements, date and time will be confirmed directly with JOWEFCO.'
+};
+
+const DEFAULT_PAYMENT = {
+    bankName: '',
+    accountName: '',
+    accountNumber: '',
+    paymentInstructions: 'After discussing your order with JOWEFCO and agreeing the final amount, request the bank transfer details. After payment, send your receipt to JOWEFCO on WhatsApp for verification.'
 };
 
 // ==================== UTILITIES ====================
@@ -144,6 +170,35 @@ window.JOWEFCO.utils = {
         return date.toLocaleDateString('en-NG', {
             year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
+    },
+    formatDateOnly(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+    },
+    // Generate a short, human-readable order reference like JOWEFCO-K3QX7P
+    generateOrderReference() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars (0/O, 1/I)
+        let ref = '';
+        for (let i = 0; i < 6; i++) {
+            ref += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return 'JOWEFCO-' + ref;
+    },
+    // Build a WhatsApp deep-link URL with a pre-filled message
+    buildWhatsAppUrl(number, message) {
+        // Normalize: strip +, spaces, dashes; ensure no leading 0 if international
+        let clean = String(number || '').replace(/[^\d]/g, '');
+        if (!clean) return null;
+        if (clean.startsWith('0')) clean = '234' + clean.slice(1);  // NG local → international
+        return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
+    },
+    // Get the canonical WhatsApp number to use for orders.
+    // Priority: settings/whatsapp.whatsappNumber → settings/contact.whatsapp → ''
+    getWhatsAppNumber() {
+        if (window.JOWEFCO.whatsapp?.whatsappNumber) return window.JOWEFCO.whatsapp.whatsappNumber;
+        if (window.JOWEFCO.contact?.whatsapp) return window.JOWEFCO.contact.whatsapp;
+        return '';
     }
 };
 
@@ -194,6 +249,73 @@ function initNavbar() {
     if (themeToggle) {
         themeToggle.addEventListener('click', toggleTheme);
     }
+}
+
+// ==================== LOAD BRANDING (logo + tagline) ====================
+// Loads `settings/branding` from Firestore. If a logoUrl is set, replaces
+// every .logo-img src on the page (header, footer, admin sidebar/login),
+// the favicon, apple-touch-icon, and og:image meta tag.
+//
+// If branding is not configured or Firestore is unreachable, the default
+// bundled /logo.jpg is used (no visual change).
+async function loadBranding() {
+    let branding = null;
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'branding'));
+        if (snap.exists()) {
+            branding = snap.data();
+        }
+    } catch (e) {
+        warnPermissionsOnce(e);
+        return; // use defaults silently
+    }
+    if (!branding) return;
+
+    const logoUrl = branding.logoUrl || null;
+    const siteName = branding.siteName || null;
+    const tagline = branding.tagline || null;
+
+    // Replace all .logo-img sources
+    if (logoUrl) {
+        document.querySelectorAll('img.logo-img').forEach(img => {
+            // Preserve any class additions (e.g. logo-img-footer)
+            img.src = logoUrl;
+            // Also update alt text if siteName is set
+            if (siteName && img.alt) img.alt = siteName;
+        });
+        // Favicon (icon link in <head>)
+        const favIcon = document.querySelector('link[rel="icon"]');
+        if (favIcon) favIcon.href = logoUrl;
+        const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        if (appleIcon) appleIcon.href = logoUrl;
+        // og:image meta tag
+        const ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage) ogImage.setAttribute('content', logoUrl);
+        // twitter:image meta tag
+        const twImage = document.querySelector('meta[name="twitter:image"]');
+        if (twImage) twImage.setAttribute('content', logoUrl);
+        // JSON-LD LocalBusiness image / logo
+        document.querySelectorAll('script[type="application/ld+json"]').forEach(s => {
+            try {
+                const data = JSON.parse(s.textContent);
+                if (data['@type'] === 'LocalBusiness' || data['@type'] === 'Organization') {
+                    if (!data.image) data.image = logoUrl;
+                    if (!data.logo) data.logo = logoUrl;
+                    s.textContent = JSON.stringify(data);
+                }
+            } catch (e) { /* not JSON-LD or invalid; ignore */ }
+        });
+    }
+
+    // Footer tagline
+    if (tagline) {
+        document.querySelectorAll('.footer-tagline').forEach(el => {
+            el.textContent = tagline;
+        });
+    }
+
+    // Expose for inline scripts
+    window.JOWEFCO.branding = branding;
 }
 
 // ==================== LOAD CONTACT INFO ====================
@@ -268,144 +390,53 @@ async function loadSocialLinks() {
     }
 }
 
-// ==================== CART (shared across all pages) ====================
-const CART_KEY = 'jowefco_cart';
-
-function getCart() {
+// ==================== LOAD BUSINESS SETTINGS (workshop, delivery) ====================
+async function loadBusinessSettings() {
+    let biz = { ...DEFAULT_BUSINESS };
     try {
-        return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-    } catch (e) { return []; }
-}
-function saveCart(cart) {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-    updateCartBadge();
-}
-function clearCart() {
-    localStorage.removeItem(CART_KEY);
-    updateCartBadge();
-}
-function updateCartBadge() {
-    const cart = getCart();
-    const totalQty = cart.reduce((s, i) => s + (i.quantity || 0), 0);
-    document.querySelectorAll('.cart-badge').forEach(b => {
-        b.textContent = totalQty;
-        b.style.display = totalQty > 0 ? 'flex' : 'none';
-    });
-}
-
-window.JOWEFCO.cart = {
-    get: getCart,
-    save: saveCart,
-    clear: clearCart,
-    add(productId, name, price, imageUrl, qty = 1) {
-        const cart = getCart();
-        const existing = cart.find(i => i.productId === productId);
-        if (existing) {
-            existing.quantity += qty;
-        } else {
-            cart.push({ productId, name, price, imageUrl, quantity: qty });
+        const snap = await getDoc(doc(db, 'settings', 'business'));
+        if (snap.exists()) {
+            biz = { ...biz, ...snap.data() };
         }
-        saveCart(cart);
-        return cart;
-    },
-    updateQty(productId, qty) {
-        const cart = getCart();
-        const item = cart.find(i => i.productId === productId);
-        if (item) {
-            item.quantity = Math.max(1, qty);
-            saveCart(cart);
-        }
-        return cart;
-    },
-    remove(productId) {
-        const cart = getCart().filter(i => i.productId !== productId);
-        saveCart(cart);
-        return cart;
-    },
-    getTotal() {
-        return getCart().reduce((s, i) => s + (i.price * i.quantity), 0);
-    },
-    getItemCount() {
-        return getCart().reduce((s, i) => s + i.quantity, 0);
-    }
-};
-
-// ==================== CART DRAWER (rendered on every page that has #cartDrawer) ====================
-function renderCartDrawer() {
-    const cartBody = document.getElementById('cartBody');
-    const cartTotal = document.getElementById('cartTotalAmount');
-    const cartCheckoutBtn = document.getElementById('cartCheckoutBtn');
-    if (!cartBody) return;
-
-    const cart = getCart();
-    if (cart.length === 0) {
-        cartBody.innerHTML = `
-            <div class="cart-empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <p>Your cart is empty</p>
-                <p style="font-size:0.85rem; margin-top:0.5rem;">Browse our shop to add products.</p>
-            </div>
-        `;
-        if (cartTotal) cartTotal.textContent = window.JOWEFCO.utils.formatPrice(0);
-        if (cartCheckoutBtn) cartCheckoutBtn.disabled = true;
-        return;
-    }
-
-    cartBody.innerHTML = cart.map(item => `
-        <div class="cart-item" data-product-id="${item.productId}">
-            <img class="cart-item-image" src="${item.imageUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23E8EAED%22/%3E%3C/svg%3E'}" alt="${window.JOWEFCO.utils.escapeHtml(item.name)}">
-            <div>
-                <div class="cart-item-name">${window.JOWEFCO.utils.escapeHtml(item.name)}</div>
-                <div class="cart-item-price">${window.JOWEFCO.utils.formatPrice(item.price)} each</div>
-                <div class="cart-item-controls">
-                    <button class="qty-btn" onclick="JOWEFCO.cartDecrement('${item.productId}')" aria-label="Decrease">−</button>
-                    <span class="qty-display">${item.quantity}</span>
-                    <button class="qty-btn" onclick="JOWEFCO.cartIncrement('${item.productId}')" aria-label="Increase">+</button>
-                    <button class="cart-item-remove" onclick="JOWEFCO.cartRemove('${item.productId}')">Remove</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-
-    if (cartTotal) cartTotal.textContent = window.JOWEFCO.utils.formatPrice(window.JOWEFCO.cart.getTotal());
-    if (cartCheckoutBtn) cartCheckoutBtn.disabled = false;
+    } catch (e) { warnPermissionsOnce(e); }
+    window.JOWEFCO.business = biz;
+    applyBusinessSettings(biz);
+    return biz;
+}
+function applyBusinessSettings(biz) {
+    // Address elements with data-contact="address" already get filled by
+    // loadContactInfo(). Here we fill business-specific elements.
+    document.querySelectorAll('[data-business="businessName"]').forEach(el => { el.textContent = biz.businessName || 'JOWEFCO Technical Services'; });
+    document.querySelectorAll('[data-business="workshopAddress"]').forEach(el => { el.textContent = biz.workshopAddress || ''; });
+    document.querySelectorAll('[data-business="openingHours"]').forEach(el => { el.textContent = biz.openingHours || ''; });
+    document.querySelectorAll('[data-business="deliveryCoverage"]').forEach(el => { el.textContent = biz.deliveryCoverage || 'Port Harcourt, Rivers State, Nigeria'; });
 }
 
-window.JOWEFCO.openCart = function () {
-    renderCartDrawer();
-    document.getElementById('cartDrawer')?.classList.add('open');
-    document.getElementById('cartOverlay')?.classList.add('open');
-    document.body.style.overflow = 'hidden';
-};
-window.JOWEFCO.closeCart = function () {
-    document.getElementById('cartDrawer')?.classList.remove('open');
-    document.getElementById('cartOverlay')?.classList.remove('open');
-    document.body.style.overflow = '';
-};
-window.JOWEFCO.cartIncrement = function (productId) {
-    const item = getCart().find(i => i.productId === productId);
-    if (item) {
-        window.JOWEFCO.cart.updateQty(productId, item.quantity + 1);
-        renderCartDrawer();
-    }
-};
-window.JOWEFCO.cartDecrement = function (productId) {
-    const item = getCart().find(i => i.productId === productId);
-    if (item) {
-        const newQty = item.quantity - 1;
-        if (newQty <= 0) {
-            window.JOWEFCO.cart.remove(productId);
-        } else {
-            window.JOWEFCO.cart.updateQty(productId, newQty);
+// ==================== LOAD WHATSAPP SETTINGS ====================
+async function loadWhatsAppSettings() {
+    let wa = { ...DEFAULT_WHATSAPP };
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'whatsapp'));
+        if (snap.exists()) {
+            wa = { ...wa, ...snap.data() };
         }
-        renderCartDrawer();
-    }
-};
-window.JOWEFCO.cartRemove = function (productId) {
-    window.JOWEFCO.cart.remove(productId);
-    renderCartDrawer();
-    window.JOWEFCO.utils.showToast('Removed from cart', 'success');
-};
+    } catch (e) { warnPermissionsOnce(e); }
+    window.JOWEFCO.whatsapp = wa;
+    return wa;
+}
+
+// ==================== LOAD PAYMENT SETTINGS (bank transfer) ====================
+async function loadPaymentSettings() {
+    let pay = { ...DEFAULT_PAYMENT };
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'payment'));
+        if (snap.exists()) {
+            pay = { ...pay, ...snap.data() };
+        }
+    } catch (e) { warnPermissionsOnce(e); }
+    window.JOWEFCO.payment = pay;
+    return pay;
+}
 
 // ==================== SCROLL REVEAL ====================
 function initReveal() {
@@ -438,10 +469,15 @@ async function ensureVisitorRegistered() {
 // ==================== INIT ====================
 async function init() {
     initNavbar();
-    updateCartBadge();
+    // Load all site settings (branding, contact, business, whatsapp, payment, social)
+    // in parallel so the page is fully populated before reveal animations.
     await Promise.all([
+        loadBranding(),
         loadContactInfo(),
         loadSocialLinks(),
+        loadBusinessSettings(),
+        loadWhatsAppSettings(),
+        loadPaymentSettings(),
         ensureVisitorRegistered()
     ]);
     initReveal();

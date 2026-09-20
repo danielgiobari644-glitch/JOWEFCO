@@ -39,7 +39,7 @@ rules_version = '2';
 //   projectChats/{chatId}/messages/{msgId}  — messages inside a chat
 //   shopItems/{productId}                   — shop catalog
 //   shopOrders/{orderId}                    — orders
-//   settings/{hero, contact, social, payments, sms} — site config
+//   settings/{hero, contact, social, payment, whatsapp, business, branding, sms} — site config
 //
 // HOW TO ACTIVATE ADMIN ACCESS:
 //   1. Create your admin account in Firebase Console → Authentication → Users
@@ -204,77 +204,83 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------------
-    // SHOP ORDERS — anyone can create (anonymous checkout); admin all
+    // SHOP ORDERS — WhatsApp-based ordering flow
     // ----------------------------------------------------------------
-    // Two valid order shapes are accepted:
+    // Public visitors create an order record when they click "Order on
+    // WhatsApp" from a product page. The order is created with
+    //   orderStatus   = 'awaiting_discussion'
+    //   paymentStatus = 'pending'
+    // and the WhatsApp deep-link opens in their browser.
     //
-    //   (A) Legacy single-product order:
-    //       { userId, customerName, customerPhone, productId, productName,
-    //         amount, paymentMethod (paypal|paystack|flutterwave),
-    //         paymentStatus: 'paid', orderStatus }
+    // Only admin can read, update status, fill in delivery details, or
+    // confirm payment. The customer can fetch a single order by ID for
+    // tracking (uses the order doc ID as a capability token).
     //
-    //   (B) Cart-based order-request (NEW — used by the redesigned shop):
-    //       { userId, customerName, customerPhone, items: [{productId,
-    //         productName, price, quantity, imageUrl}],
-    //         amount (sum of items), paymentMethod: 'pending',
-    //         paymentStatus: 'pending', orderStatus: 'requested',
-    //         deliveryLocation, notes (optional), customerEmail (optional) }
+    // Required fields at create time:
+    //   userId, customerName, customerPhone, orderReference, productId,
+    //   productName, quantity, listedPrice, orderStatus, paymentStatus,
+    //   paymentMethod, deliveryLocation, createdAt
     //
-    //   The (B) shape has paymentStatus='pending' because payment is
-    //   collected MANUALLY by the admin after confirming stock and total.
-    //   This is safe because the doc is created with orderStatus='requested'
-    //   and cannot transition to 'paid' without admin action.
+    // Optional fields at create time:
+    //   customerWhatsapp, customerNotes, productImageUrl, storeUrl, storeUrl
     // ----------------------------------------------------------------
     match /shopOrders/{orderId} {
-      allow create: if request.resource.data.keys().hasAll(['userId', 'customerName', 'customerPhone', 'amount', 'paymentMethod', 'paymentStatus', 'orderStatus'])
-                    && request.resource.data.customerName is string
-                    && request.resource.data.customerName.size() > 0
-                    && request.resource.data.customerPhone is string
-                    && request.resource.data.customerPhone.size() > 0
-                    && request.resource.data.amount is number
-                    && request.resource.data.amount > 0
-                    && request.resource.data.paymentMethod is string
-                    && (
-                      // (A) Legacy: gateway-paid order — paymentStatus must be 'paid'
-                      //     and paymentMethod must be one of the configured gateways.
-                      (
-                        (request.resource.data.paymentMethod == 'paypal'
-                         || request.resource.data.paymentMethod == 'paystack'
-                         || request.resource.data.paymentMethod == 'flutterwave')
-                        && request.resource.data.paymentStatus == 'paid'
-                        && request.resource.data.keys().hasAll(['productId', 'productName'])
-                      )
-                      ||
-                      // (B) New: cart-based order-request — paymentStatus is 'pending'
-                      //     and paymentMethod is 'pending' (admin assigns a real
-                      //     gateway later). Must include items array.
-                      (
-                        request.resource.data.paymentMethod == 'pending'
-                        && request.resource.data.paymentStatus == 'pending'
-                        && request.resource.data.orderStatus == 'requested'
-                        && request.resource.data.keys().hasAll(['items'])
-                        && request.resource.data.items is list
-                        && request.resource.data.items.size() > 0
-                      )
-                    );
+      // PUBLIC can CREATE an order-request (anonymous checkout via WhatsApp)
+      allow create: if request.resource.data.keys().hasAll([
+          'userId', 'customerName', 'customerPhone', 'orderReference',
+          'productId', 'productName', 'quantity', 'listedPrice',
+          'orderStatus', 'paymentStatus', 'paymentMethod',
+          'deliveryLocation', 'createdAt'
+        ])
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() > 0
+        && request.resource.data.customerPhone is string
+        && request.resource.data.customerPhone.size() > 0
+        && request.resource.data.orderReference is string
+        && request.resource.data.orderReference.size() > 0
+        && request.resource.data.productId is string
+        && request.resource.data.productId.size() > 0
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() > 0
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.listedPrice is number
+        && request.resource.data.listedPrice >= 0
+        && request.resource.data.orderStatus == 'awaiting_discussion'
+        && request.resource.data.paymentStatus == 'pending'
+        && request.resource.data.paymentMethod == 'manual';
 
-      // Only admin can read/update/delete orders
-      // (Public users cannot list orders — they don't have a "my orders" page)
-      allow read, update, delete: if isAdmin();
+      // PUBLIC can fetch a SINGLE order by ID (for tracking) — the order doc
+      // ID is a capability token; only someone who knows it can read it.
+      // This lets customers track their own order using the orderReference
+      // → docId mapping that the customer page derives from a public lookup.
+      // (Admin can list all orders via isAdmin() below.)
+      allow get: if true;
+
+      // ADMIN can read/update/delete ANY order — including:
+      //   • confirm payment  (paymentStatus → 'confirmed')
+      //   • update status    (orderStatus → 'order_agreed', 'payment_pending',
+      //                       'payment_confirmed', 'delivery_scheduled',
+      //                       'out_for_delivery', 'delivered', 'cancelled')
+      //   • fill delivery    (deliveryAddress, deliveryDate, deliveryTime,
+      //                       deliveryInstructions)
+      //   • set agreedPrice
+      allow list, update, delete: if isAdmin();
     }
 
     // ----------------------------------------------------------------
     // SETTINGS — public read, admin write only
-    // (hero, contact, social, payments, sms)
+    // (hero, contact, social, payment, whatsapp, business, branding, sms)
     //
     // ⚠️  NEVER store secret keys here. Only public keys and IDs.
-    //     - PayPal Client ID (safe to expose — it's a public key)
-    //     - Paystack Public Key (safe to expose)
-    //     - Flutterwave Public Key (safe to expose)
+    //     - Bank account details (public by design — printed on invoices)
+    //     - WhatsApp number (public)
+    //     - Workshop address + lat/lng (public — used for directions)
     //     - Currency code/symbol
     //     - Hero text + media URLs
     //     - Contact phone/email/address
     //     - Social media URLs
+    //     - Branding (logo URL, tagline)
     //     - Termii Sender ID (the API key is stored here too, but it's
     //       only read by admin — if you want stricter security, split
     //       SMS settings into a separate doc restricted to admin reads)

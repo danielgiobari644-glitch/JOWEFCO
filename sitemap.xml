@@ -16,27 +16,27 @@
         <priority>0.9</priority>
     </url>
     <url>
-        <loc>https://jowefco.web.app/services/welding.html</loc>
+        <loc>https://jowefco.web.app/welding.html</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://jowefco.web.app/services/metal-fabrication.html</loc>
+        <loc>https://jowefco.web.app/metal-fabrication.html</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://jowefco.web.app/services/structural-steel.html</loc>
+        <loc>https://jowefco.web.app/structural-steel.html</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://jowefco.web.app/services/custom-metal-doors.html</loc>
+        <loc>https://jowefco.web.app/custom-metal-doors.html</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://jowefco.web.app/services/technical-services.html</loc>
+        <loc>https://jowefco.web.app/technical-services.html</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
@@ -48,7 +48,12 @@
     <url>
         <loc>https://jowefco.web.app/shop.html</loc>
         <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>https://jowefco.web.app/track-order.html</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
     </url>
     <url>
         <loc>https://jowefco.web.app/faq.html</loc>
