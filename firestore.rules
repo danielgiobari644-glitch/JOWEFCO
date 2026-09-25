@@ -39,6 +39,7 @@ rules_version = '2';
 //   projectChats/{chatId}/messages/{msgId}  — messages inside a chat
 //   shopItems/{productId}                   — shop catalog
 //   shopOrders/{orderId}                    — orders
+//   pageBlocks/{blockId}                    — admin-managed content blocks (text, cards, images)
 //   settings/{hero, contact, social, payment, whatsapp, business, branding, sms} — site config
 //
 // HOW TO ACTIVATE ADMIN ACCESS:
@@ -266,6 +267,17 @@ service cloud.firestore {
       //                       deliveryInstructions)
       //   • set agreedPrice
       allow list, update, delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------
+    // PAGE BLOCKS — admin-managed content blocks (text, cards, images)
+    // Public visitors read blocks for the current page; admin writes them.
+    // Each block has: pageId (e.g. 'index', 'about'), zone ('top'|'bottom'),
+    // position (sort order), type, content.
+    // ----------------------------------------------------------------
+    match /pageBlocks/{blockId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     // ----------------------------------------------------------------

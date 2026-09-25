@@ -175,7 +175,8 @@ function switchTab(tabName) {
         whatsapp: 'WhatsApp Settings',
         business: 'Business Settings',
         users: 'Users',
-        branding: 'Logo & Branding'
+        branding: 'Logo & Branding',
+        pages: 'Page Blocks'
     };
     document.getElementById('adminPageTitle').textContent = titles[tabName] || 'Dashboard';
     closeSidebar();
@@ -198,6 +199,7 @@ async function loadTabContent(tabName) {
         case 'business': await loadBusinessSettings(); break;
         case 'users': await loadUsersManagement(); break;
         case 'branding': await loadBrandingSettings(); break;
+        case 'pages': await loadPagesManagement(); break;
     }
 }
 
@@ -1274,7 +1276,360 @@ function showBrandingPreview(url) {
     preview.innerHTML = `<img src="${url}" alt="Logo preview" style="max-width:100%;max-height:140px;object-fit:contain;" onerror="this.parentElement.innerHTML='<p style=\\'color:var(--danger);font-size:0.85rem;margin:0;\\'>Could not load image. Check the URL.</p>'">`;
 }
 
-// ==================== INIT ====================
+// ==================== PAGES (Content Blocks) MANAGEMENT ====================
+let currentPageBlocks = [];
+let currentBlockType = 'text';
+let editingBlockId = null;
+let blockListListener = null;
+
+async function loadPagesManagement() {
+    const pageSelect = document.getElementById('blockPageSelect');
+    const form = document.getElementById('blockEditorForm');
+    const typeSelector = document.getElementById('blockTypeSelector');
+    const addCardBtn = document.getElementById('addBlockCardBtn');
+    const resetBtn = document.getElementById('blockResetBtn');
+    const cancelBtn = document.getElementById('blockCancelBtn');
+
+    if (!form.dataset.wired) {
+        form.dataset.wired = '1';
+
+        // Page selector — load blocks for selected page
+        pageSelect.addEventListener('change', () => loadBlocksForPage(pageSelect.value));
+
+        // Block type selector — toggle active + show/hide field groups + update preview
+        typeSelector.querySelectorAll('.block-type-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                typeSelector.querySelectorAll('.block-type-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentBlockType = btn.dataset.type;
+                toggleBlockFieldGroups();
+                updateBlockPreview();
+            });
+        });
+
+        // Live preview — every input change triggers preview update
+        form.addEventListener('input', () => updateBlockPreview());
+
+        // Add card to cards-grid
+        addCardBtn.addEventListener('click', () => addBlockCardRow());
+
+        // Reset form
+        resetBtn.addEventListener('click', resetBlockForm);
+
+        // Cancel edit
+        cancelBtn.addEventListener('click', resetBlockForm);
+
+        // Submit
+        form.addEventListener('submit', onBlockFormSubmit);
+    }
+
+    // Load blocks for the current page (or default to 'index')
+    await loadBlocksForPage(pageSelect.value || 'index');
+}
+
+async function loadBlocksForPage(pageId) {
+    const list = document.getElementById('blockList');
+    const countEl = document.getElementById('blockCount');
+    if (!list) return;
+
+    try {
+        const snap = await getDocs(collection(db, 'pageBlocks'));
+        currentPageBlocks = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.pageId === pageId) {
+                currentPageBlocks.push({ id: d.id, ...data });
+            }
+        });
+        currentPageBlocks.sort((a, b) => {
+            const pa = typeof a.position === 'number' ? a.position : 999;
+            const pb = typeof b.position === 'number' ? b.position : 999;
+            if (pa !== pb) return pa - pb;
+            const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return ta - tb;
+        });
+        renderBlockList();
+        if (countEl) countEl.textContent = `${currentPageBlocks.length} block${currentPageBlocks.length === 1 ? '' : 's'}`;
+    } catch (e) {
+        warn(e);
+        list.innerHTML = '<p style="text-align:center;color:var(--danger);padding:1.5rem;">Could not load blocks.</p>';
+    }
+}
+
+function renderBlockList() {
+    const list = document.getElementById('blockList');
+    if (!list) return;
+    if (currentPageBlocks.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:1.5rem;font-size:0.9rem;">No blocks yet on this page. Use the form on the left to add one.</p>';
+        return;
+    }
+    list.innerHTML = currentPageBlocks.map(b => {
+        const typeLabel = { text:'Text', heading:'Heading', image:'Image', card:'Card', 'cards-grid':'Cards Grid', cta:'CTA' }[b.type] || b.type;
+        const title = b.title || (b.type === 'image' ? b.imageUrl?.split('/').pop() : b.content?.slice(0, 40)) || '(no title)';
+        const zoneLabel = b.zone === 'bottom' ? 'Bottom zone' : 'Top zone';
+        return `<div class="block-list-item${b.id === editingBlockId ? ' active' : ''}" data-id="${b.id}" onclick="JOWEFCOAdmin.editBlock('${b.id}')">
+            <div class="block-list-item-meta">
+                <div class="block-list-item-type">${typeLabel}</div>
+                <div class="block-list-item-title">${utils.escapeHtml(title)}</div>
+                <div class="block-list-item-zone">${zoneLabel} • Order: ${b.position ?? '—'}</div>
+            </div>
+            <div class="block-list-item-actions" onclick="event.stopPropagation()">
+                <button title="Move up" onclick="JOWEFCOAdmin.moveBlockUp('${b.id}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button title="Move down" onclick="JOWEFCOAdmin.moveBlockDown('${b.id}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="danger" title="Delete" onclick="JOWEFCOAdmin.deleteBlock('${b.id}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.JOWEFCOAdmin = window.JOWEFCOAdmin || {};
+window.JOWEFCOAdmin.editBlock = function (id) {
+    const block = currentPageBlocks.find(b => b.id === id);
+    if (!block) return;
+    editingBlockId = id;
+
+    // Set type
+    currentBlockType = block.type;
+    document.querySelectorAll('.block-type-option').forEach(b => b.classList.toggle('active', b.dataset.type === block.type));
+
+    // Populate fields
+    document.getElementById('blockEditId').value = block.id;
+    document.getElementById('blockZone').value = block.zone || 'top';
+    document.getElementById('blockPosition').value = block.position ?? 10;
+    document.getElementById('blockTitle').value = block.title || '';
+    document.getElementById('blockSubtitle').value = block.subtitle || '';
+    document.getElementById('blockBadge').value = block.badge || '';
+    document.getElementById('blockContent').value = block.content || '';
+    document.getElementById('blockImageUrl').value = block.imageUrl || '';
+    document.getElementById('blockCaption').value = block.caption || '';
+    document.getElementById('blockCtaText').value = block.ctaText || '';
+    document.getElementById('blockCtaUrl').value = block.ctaUrl || '';
+    document.getElementById('blockStyleBg').value = block.style?.background || '';
+    document.getElementById('blockStylePadding').value = block.style?.padding || '';
+
+    // Populate cards (for cards-grid type)
+    const cardsEditor = document.getElementById('blockCardsEditor');
+    cardsEditor.innerHTML = '';
+    if (Array.isArray(block.cards)) {
+        block.cards.forEach(c => addBlockCardRow(c.title, c.body, c.iconSvg));
+    }
+
+    toggleBlockFieldGroups();
+    updateBlockPreview();
+    renderBlockList();
+    document.getElementById('blockSubmitBtn').textContent = 'Update Block';
+    document.getElementById('blockCancelBtn').style.display = 'inline-flex';
+
+    // Scroll form into view
+    document.getElementById('blockEditorForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.JOWEFCOAdmin.deleteBlock = async function (id) {
+    if (!confirm('Delete this block? It will be removed from the public site immediately.')) return;
+    try {
+        await deleteDoc(doc(db, 'pageBlocks', id));
+        utils.showToast('Block deleted', 'success');
+        if (editingBlockId === id) resetBlockForm();
+        await loadBlocksForPage(document.getElementById('blockPageSelect').value);
+    } catch (e) {
+        warn(e);
+        utils.showToast('Could not delete block', 'error');
+    }
+};
+
+window.JOWEFCOAdmin.moveBlockUp = async function (id) {
+    const idx = currentPageBlocks.findIndex(b => b.id === id);
+    if (idx <= 0) return;
+    const current = currentPageBlocks[idx];
+    const above = currentPageBlocks[idx - 1];
+    const currentPos = typeof current.position === 'number' ? current.position : 999;
+    const abovePos = typeof above.position === 'number' ? above.position : 999;
+    try {
+        await Promise.all([
+            updateDoc(doc(db, 'pageBlocks', current.id), { position: abovePos }),
+            updateDoc(doc(db, 'pageBlocks', above.id), { position: currentPos })
+        ]);
+        utils.showToast('Block moved up', 'success');
+        await loadBlocksForPage(document.getElementById('blockPageSelect').value);
+    } catch (e) { warn(e); utils.showToast('Could not move block', 'error'); }
+};
+
+window.JOWEFCOAdmin.moveBlockDown = async function (id) {
+    const idx = currentPageBlocks.findIndex(b => b.id === id);
+    if (idx < 0 || idx >= currentPageBlocks.length - 1) return;
+    const current = currentPageBlocks[idx];
+    const below = currentPageBlocks[idx + 1];
+    const currentPos = typeof current.position === 'number' ? current.position : 999;
+    const belowPos = typeof below.position === 'number' ? below.position : 999;
+    try {
+        await Promise.all([
+            updateDoc(doc(db, 'pageBlocks', current.id), { position: belowPos }),
+            updateDoc(doc(db, 'pageBlocks', below.id), { position: currentPos })
+        ]);
+        utils.showToast('Block moved down', 'success');
+        await loadBlocksForPage(document.getElementById('blockPageSelect').value);
+    } catch (e) { warn(e); utils.showToast('Could not move block', 'error'); }
+};
+
+function toggleBlockFieldGroups() {
+    const t = currentBlockType;
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+    show('blockContentGroup', t === 'text' || t === 'card' || t === 'cta');
+    show('blockSubtitleGroup', t === 'heading');
+    show('blockBadgeGroup', t === 'heading');
+    show('blockImageUrlGroup', t === 'image');
+    show('blockCaptionGroup', t === 'image');
+    show('blockCardsGroup', t === 'cards-grid');
+    show('blockCtaTextGroup', t === 'card' || t === 'cta');
+    show('blockCtaUrlGroup', t === 'card' || t === 'cta');
+}
+
+function addBlockCardRow(title = '', body = '', iconSvg = '') {
+    const container = document.getElementById('blockCardsEditor');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'block-card-row';
+    row.innerHTML = `
+        <input type="text" class="block-card-title" placeholder="Card title" value="${utils.escapeHtml(title || '')}">
+        <textarea class="block-card-body" rows="2" placeholder="Card body text...">${utils.escapeHtml(body || '')}</textarea>
+        <button type="button" class="btn btn-danger btn-sm block-card-remove" title="Remove card" style="align-self:start;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke-linecap="round"/></svg>
+        </button>
+        <input type="hidden" class="block-card-icon" value="${utils.escapeHtml(iconSvg || '')}">
+    `;
+    row.querySelector('.block-card-remove').addEventListener('click', () => row.remove());
+    container.appendChild(row);
+    // Wire input change to update preview
+    row.addEventListener('input', updateBlockPreview);
+}
+
+function resetBlockForm() {
+    editingBlockId = null;
+    currentBlockType = 'text';
+    document.getElementById('blockEditorForm').reset();
+    document.getElementById('blockEditId').value = '';
+    document.querySelectorAll('.block-type-option').forEach(b => b.classList.toggle('active', b.dataset.type === 'text'));
+    document.getElementById('blockCardsEditor').innerHTML = '';
+    document.getElementById('blockSubmitBtn').textContent = 'Save Block';
+    document.getElementById('blockCancelBtn').style.display = 'none';
+    document.getElementById('blockPosition').value = 10;
+    toggleBlockFieldGroups();
+    updateBlockPreview();
+    renderBlockList();
+}
+
+function buildBlockFromForm() {
+    const type = currentBlockType;
+    const block = {
+        pageId: document.getElementById('blockPageSelect').value,
+        zone: document.getElementById('blockZone').value,
+        position: parseInt(document.getElementById('blockPosition').value, 10) || 10,
+        type: type,
+        title: document.getElementById('blockTitle').value.trim() || null,
+        style: {
+            background: document.getElementById('blockStyleBg').value || null,
+            padding: document.getElementById('blockStylePadding').value || null
+        }
+    };
+    if (type === 'heading') {
+        block.subtitle = document.getElementById('blockSubtitle').value.trim() || null;
+        block.badge = document.getElementById('blockBadge').value.trim() || null;
+    }
+    if (type === 'text' || type === 'card' || type === 'cta') {
+        block.content = document.getElementById('blockContent').value || null;
+    }
+    if (type === 'image') {
+        block.imageUrl = document.getElementById('blockImageUrl').value.trim() || null;
+        block.caption = document.getElementById('blockCaption').value.trim() || null;
+        block.alt = block.title || 'Image';
+    }
+    if (type === 'card' || type === 'cta') {
+        block.ctaText = document.getElementById('blockCtaText').value.trim() || null;
+        block.ctaUrl = document.getElementById('blockCtaUrl').value.trim() || null;
+    }
+    if (type === 'cards-grid') {
+        const cards = [];
+        document.querySelectorAll('#blockCardsEditor .block-card-row').forEach(row => {
+            const t = row.querySelector('.block-card-title').value.trim();
+            const b = row.querySelector('.block-card-body').value.trim();
+            if (t || b) cards.push({ title: t, body: b });
+        });
+        block.cards = cards;
+    }
+    return block;
+}
+
+// Live preview — debounce to avoid recomputing on every keystroke
+let _previewTimer = null;
+function updateBlockPreview() {
+    if (_previewTimer) clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(() => {
+        const previewEl = document.getElementById('blockPreviewContent');
+        if (!previewEl) return;
+        const block = buildBlockFromForm();
+        // Use the shared renderPageBlock function from common.js
+        if (window.JOWEFCO.renderPageBlock) {
+            previewEl.innerHTML = window.JOWEFCO.renderPageBlock(block);
+        }
+    }, 200);
+}
+
+async function onBlockFormSubmit(e) {
+    e.preventDefault();
+    const block = buildBlockFromForm();
+    if (!block.pageId) {
+        utils.showToast('Select a target page first', 'error');
+        return;
+    }
+    // Validate type-specific required fields
+    if (block.type === 'image' && !block.imageUrl) {
+        utils.showToast('Image block requires an image URL', 'error');
+        return;
+    }
+    if (block.type === 'cards-grid' && (!Array.isArray(block.cards) || block.cards.length === 0)) {
+        utils.showToast('Cards grid needs at least one card', 'error');
+        return;
+    }
+
+    const submitBtn = document.getElementById('blockSubmitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        if (editingBlockId) {
+            // Update existing
+            await updateDoc(doc(db, 'pageBlocks', editingBlockId), {
+                ...block,
+                updatedAt: Timestamp.now()
+            });
+            utils.showToast('Block updated — live on site', 'success');
+        } else {
+            // Create new
+            await addDoc(collection(db, 'pageBlocks'), {
+                ...block,
+                createdAt: Timestamp.now()
+            });
+            utils.showToast('Block added — live on site', 'success');
+        }
+        resetBlockForm();
+        await loadBlocksForPage(block.pageId);
+    } catch (e) {
+        warn(e);
+        utils.showToast('Could not save block', 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
 async function initializeDashboard() {
     // Load current tab
     await loadTabContent(currentTab);

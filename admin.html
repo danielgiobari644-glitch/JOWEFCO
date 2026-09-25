@@ -176,6 +176,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10M12 2a15.3 15.3 0 00-4 10 15.3 15.3 0 004 10" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Branding
                     </button></li>
+                    <li><button class="admin-nav-btn" data-tab="pages">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18" stroke-linecap="round"/></svg>
+                        Pages
+                    </button></li>
                 </ul>
                 <div style="padding:1rem 0.5rem;margin-top:1rem;border-top:1px solid var(--surface-border);">
                     <button class="admin-nav-btn" id="logoutBtn">
@@ -730,6 +734,166 @@
                             <li><strong>Mobile home-screen icon</strong> — apple-touch-icon when bookmarked</li>
                             <li><strong>Social share preview</strong> — og:image meta tag used when the site is shared on Facebook, Twitter, WhatsApp, etc.</li>
                         </ul>
+                    </div>
+                </div>
+
+                <!-- ==================== PAGES TAB (content blocks) ==================== -->
+                <div id="pagesTab" class="admin-tab">
+                    <div class="admin-panel">
+                        <div class="admin-panel-header">
+                            <h2>Page Content Blocks</h2>
+                            <select id="blockPageSelect" style="width:auto;min-width:200px;">
+                                <option value="index">Homepage</option>
+                                <option value="about">About</option>
+                                <option value="services">Services Hub</option>
+                                <option value="projects">Projects</option>
+                                <option value="shop">Shop</option>
+                                <option value="contact">Contact</option>
+                                <option value="faq">FAQ</option>
+                                <option value="track-order">Track Order</option>
+                                <option value="product">Product Page</option>
+                                <option value="welding">Welding Service</option>
+                                <option value="metal-fabrication">Metal Fabrication Service</option>
+                                <option value="structural-steel">Structural Steel Service</option>
+                                <option value="custom-metal-doors">Custom Metal Doors Service</option>
+                                <option value="technical-services">Technical Services</option>
+                            </select>
+                        </div>
+                        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.6;">
+                            Add text, cards, images, headings, or call-to-action (CTA) blocks anywhere on the selected page. Blocks appear live on the public site the moment they're saved. Choose "Top zone" to display the block near the top of the page (after the hero), or "Bottom zone" to display it just before the footer.
+                        </p>
+                    </div>
+
+                    <div class="block-editor-layout">
+                        <!-- LEFT: block list + edit form -->
+                        <div>
+                            <div class="admin-panel" style="padding:1rem;">
+                                <div class="admin-panel-header"><h3>Add New Block</h3></div>
+                                <form id="blockEditorForm" class="block-editor-form">
+                                    <input type="hidden" id="blockEditId">
+                                    <div class="form-group">
+                                        <label>Block Type</label>
+                                        <div class="block-type-selector" id="blockTypeSelector">
+                                            <button type="button" class="block-type-option active" data-type="text">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke-linecap="round"/><line x1="4" y1="18" x2="14" y2="18" stroke-linecap="round"/></svg>
+                                                Text
+                                            </button>
+                                            <button type="button" class="block-type-option" data-type="heading">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4v16M18 4v16M6 12h12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                Heading
+                                            </button>
+                                            <button type="button" class="block-type-option" data-type="image">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                Image
+                                            </button>
+                                            <button type="button" class="block-type-option" data-type="card">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                                Card
+                                            </button>
+                                            <button type="button" class="block-type-option" data-type="cards-grid">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                                Cards Grid
+                                            </button>
+                                            <button type="button" class="block-type-option" data-type="cta">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                CTA
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="blockZone">Position on Page</label>
+                                            <select id="blockZone">
+                                                <option value="top">Top zone (after hero)</option>
+                                                <option value="bottom">Bottom zone (before footer)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="blockPosition">Order (lower = appears earlier)</label>
+                                            <input type="number" id="blockPosition" value="10" step="10" min="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="blockTitle">Title (optional)</label>
+                                        <input type="text" id="blockTitle" placeholder="Section title...">
+                                    </div>
+                                    <div class="form-group" id="blockContentGroup">
+                                        <label for="blockContent">Content</label>
+                                        <textarea id="blockContent" rows="4" placeholder="Write your text here. Double newline starts a new paragraph. Basic HTML allowed: <b>, <i>, <strong>, <a href>, <ul>, <li>, <h3>, <br>."></textarea>
+                                    </div>
+                                    <div class="form-group" id="blockSubtitleGroup" style="display:none;">
+                                        <label for="blockSubtitle">Subtitle (optional)</label>
+                                        <input type="text" id="blockSubtitle" placeholder="Subtitle appears under the title...">
+                                    </div>
+                                    <div class="form-group" id="blockBadgeGroup" style="display:none;">
+                                        <label for="blockBadge">Badge (optional, small label above title)</label>
+                                        <input type="text" id="blockBadge" placeholder="e.g. About JOWEFCO">
+                                    </div>
+                                    <div class="form-group" id="blockImageUrlGroup" style="display:none;">
+                                        <label for="blockImageUrl">Image URL</label>
+                                        <input type="url" id="blockImageUrl" placeholder="https://...">
+                                    </div>
+                                    <div class="form-group" id="blockCaptionGroup" style="display:none;">
+                                        <label for="blockCaption">Caption (optional)</label>
+                                        <input type="text" id="blockCaption" placeholder="Caption appears below the image...">
+                                    </div>
+                                    <div class="form-group" id="blockCardsGroup" style="display:none;">
+                                        <label>Cards in this grid</label>
+                                        <div class="block-cards-editor" id="blockCardsEditor">
+                                            <!-- card rows dynamically inserted here -->
+                                        </div>
+                                        <button type="button" class="btn btn-outline btn-sm" id="addBlockCardBtn" style="margin-top:0.5rem;">+ Add Card</button>
+                                    </div>
+                                    <div class="form-group" id="blockCtaTextGroup" style="display:none;">
+                                        <label for="blockCtaText">Button Text (optional)</label>
+                                        <input type="text" id="blockCtaText" placeholder="e.g. Get a Quote">
+                                    </div>
+                                    <div class="form-group" id="blockCtaUrlGroup" style="display:none;">
+                                        <label for="blockCtaUrl">Button URL (optional — link the button)</label>
+                                        <input type="url" id="blockCtaUrl" placeholder="https://...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Style (optional)</label>
+                                        <div class="form-row">
+                                            <select id="blockStyleBg">
+                                                <option value="">Default background</option>
+                                                <option value="alt">Alternate (light gray bg)</option>
+                                                <option value="primary">Primary blue bg (for emphasis)</option>
+                                            </select>
+                                            <select id="blockStylePadding">
+                                                <option value="">Normal padding</option>
+                                                <option value="tight">Tight padding</option>
+                                                <option value="large">Large padding</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <button type="submit" class="btn btn-primary" id="blockSubmitBtn">Save Block</button>
+                                        <button type="button" class="btn btn-outline" id="blockCancelBtn" style="display:none;">Cancel Edit</button>
+                                        <button type="button" class="btn btn-ghost" id="blockResetBtn">Reset Form</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: live preview + block list -->
+                        <div>
+                            <div class="admin-panel" style="padding:0;overflow:hidden;">
+                                <div class="block-preview">
+                                    <div class="block-preview-label">Live Preview</div>
+                                    <div class="block-preview-content" id="blockPreviewContent"></div>
+                                </div>
+                            </div>
+                            <div class="admin-panel">
+                                <div class="admin-panel-header">
+                                    <h3>Existing Blocks on this Page</h3>
+                                    <span id="blockCount" style="font-size:0.78rem;color:var(--text-tertiary);">0 blocks</span>
+                                </div>
+                                <div class="block-list" id="blockList">
+                                    <p style="text-align:center;color:var(--text-tertiary);padding:1.5rem;font-size:0.9rem;">No blocks yet on this page.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

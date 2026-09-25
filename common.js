@@ -474,8 +474,147 @@ window.JOWEFCO.applyBusinessNow = applyBusinessNow;
 window.JOWEFCO.applyWhatsAppNow = applyWhatsAppNow;
 window.JOWEFCO.applyPaymentNow = applyPaymentNow;
 window.JOWEFCO.applyAllSettingsNow = applyAllSettingsNow;
+window.JOWEFCO.loadPageBlocks = loadPageBlocks;
+window.JOWEFCO.renderPageBlock = renderPageBlock;
 
-// ==================== SCROLL REVEAL ====================
+// ==================== PAGE BLOCKS (admin-managed content) ====================
+// Loads admin-added content blocks for the current page and renders them
+// in the #customBlocksTop and #customBlocksBottom zones. Blocks are sorted
+// by position ascending. Block types: heading, text, image, card, cards-grid, cta.
+async function loadPageBlocks() {
+    const topZone = document.getElementById('customBlocksTop');
+    const bottomZone = document.getElementById('customBlocksBottom');
+    if (!topZone && !bottomZone) return;
+
+    const pageId = (topZone || bottomZone).getAttribute('data-page') || 'index';
+    let blocks = [];
+    try {
+        const snap = await getDocs(collection(db, 'pageBlocks'));
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.pageId === pageId) {
+                blocks.push({ id: d.id, ...data });
+            }
+        });
+    } catch (e) {
+        warnPermissionsOnce(e);
+        return;
+    }
+    if (blocks.length === 0) return;
+
+    // Sort by position ascending, then by createdAt as tiebreaker
+    blocks.sort((a, b) => {
+        const pa = typeof a.position === 'number' ? a.position : 999;
+        const pb = typeof b.position === 'number' ? b.position : 999;
+        if (pa !== pb) return pa - pb;
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return ta - tb;
+    });
+
+    const topBlocks = blocks.filter(b => b.zone !== 'bottom');
+    const bottomBlocks = blocks.filter(b => b.zone === 'bottom');
+
+    if (topZone && topBlocks.length > 0) {
+        topZone.innerHTML = topBlocks.map(renderPageBlock).join('');
+        topZone.classList.add('loaded');
+    }
+    if (bottomZone && bottomBlocks.length > 0) {
+        bottomZone.innerHTML = bottomBlocks.map(renderPageBlock).join('');
+        bottomZone.classList.add('loaded');
+    }
+
+    // Trigger reveal animation on the freshly rendered blocks
+    document.querySelectorAll('#customBlocksTop .reveal, #customBlocksBottom .reveal').forEach(el => {
+        el.classList.add('visible');
+    });
+}
+
+// Local alias so renderPageBlock doesn't reference the undefined `utils` symbol.
+// (window.JOWEFCO.utils is set elsewhere in this file; we capture it once.)
+const _U = () => window.JOWEFCO.utils;
+
+function renderPageBlock(block) {
+    // Build the class attribute for the <section> wrapper
+    const classes = ['reveal'];
+    if (block.style?.background === 'alt') classes.push('alt');
+    if (block.style?.padding === 'tight') classes.push('tight');
+    const sectionClassStr = ` class="${classes.join(' ')}"`;
+    const sectionStyleStr = block.style?.background === 'primary'
+        ? ' style="background:linear-gradient(135deg,var(--brand-blue) 0%,var(--brand-blue-dark) 100%);color:#FFFFFF;"'
+        : '';
+    const largePaddingStyle = block.style?.padding === 'large' ? ' style="padding:var(--space-2xl) 0;"' : '';
+    // If both primary bg and large padding, merge into one style
+    const finalStyle = sectionStyleStr && largePaddingStyle
+        ? ` style="background:linear-gradient(135deg,var(--brand-blue) 0%,var(--brand-blue-dark) 100%);color:#FFFFFF;padding:var(--space-2xl) 0;"`
+        : (sectionStyleStr || largePaddingStyle || '');
+
+    switch (block.type) {
+        case 'heading': {
+            const subtitle = block.subtitle ? `<p class="section-subtitle">${_U().escapeHtml(block.subtitle)}</p>` : '';
+            const badge = block.badge ? `<span class="section-badge">${_U().escapeHtml(block.badge)}</span>` : '';
+            const align = block.style?.align === 'left' ? ' left' : '';
+            return `<section${sectionClassStr}><div class="container"><div class="section-header${align}">${badge}<h2 class="section-title">${_U().escapeHtml(block.title || '')}</h2>${subtitle}</div></div></section>`;
+        }
+        case 'text': {
+            const title = block.title ? `<h2 class="section-title" style="margin-bottom:1rem;">${_U().escapeHtml(block.title)}</h2>` : '';
+            const paras = (block.content || '').split(/\n\n+/).map(p => `<p>${escapeLightHtml(p)}</p>`).join('');
+            return `<section${sectionClassStr}><div class="container"><div class="content-block">${title}${paras}</div></div></section>`;
+        }
+        case 'image': {
+            const alt = block.alt || block.title || 'Image';
+            const caption = block.caption ? `<p style="margin-top:0.75rem;font-size:0.88rem;color:var(--text-tertiary);text-align:center;">${_U().escapeHtml(block.caption)}</p>` : '';
+            const title = block.title ? `<h2 class="section-title" style="margin-bottom:1.5rem;text-align:center;">${_U().escapeHtml(block.title)}</h2>` : '';
+            const maxWidth = block.style?.imageWidth === 'full' ? 'width:100%' : 'max-width:760px;margin:0 auto;';
+            return `<section${sectionClassStr}><div class="container">${title}<div style="${maxWidth}"><img src="${_U().escapeHtml(block.imageUrl || '')}" alt="${_U().escapeHtml(alt)}" style="width:100%;border-radius:var(--radius-md);display:block;" loading="lazy">${caption}</div></div></section>`;
+        }
+        case 'card': {
+            const icon = block.iconSvg ? `<div class="service-icon">${block.iconSvg}</div>` : '';
+            const title = block.title ? `<h3>${_U().escapeHtml(block.title)}</h3>` : '';
+            const content = block.content ? `<p>${escapeLightHtml(block.content)}</p>` : '';
+            const cta = block.ctaText && block.ctaUrl ? `<a href="${_U().escapeHtml(block.ctaUrl)}" class="btn btn-primary btn-sm" style="margin-top:1rem;">${_U().escapeHtml(block.ctaText)}</a>` : '';
+            return `<section${sectionClassStr}><div class="container"><div style="max-width:560px;margin:0 auto;"><div class="card"><div class="card-body">${icon}${title}${content}${cta}</div></div></div></div></section>`;
+        }
+        case 'cards-grid': {
+            const title = block.title ? `<div class="section-header"><h2 class="section-title">${_U().escapeHtml(block.title)}</h2></div>` : '';
+            const cards = Array.isArray(block.cards) ? block.cards.map(c => {
+                const cIcon = c.iconSvg ? `<div class="service-icon">${c.iconSvg}</div>` : '';
+                const cTitle = c.title ? `<h3>${_U().escapeHtml(c.title)}</h3>` : '';
+                const cBody = c.body ? `<p>${escapeLightHtml(c.body)}</p>` : '';
+                return `<div class="service-card">${cIcon}${cTitle}${cBody}</div>`;
+            }).join('') : '';
+            return `<section${sectionClassStr}${finalStyle}><div class="container">${title}<div class="services-grid">${cards}</div></div></section>`;
+        }
+        case 'cta': {
+            const title = block.title ? `<h2>${_U().escapeHtml(block.title)}</h2>` : '';
+            const content = block.content ? `<p>${_U().escapeHtml(block.content)}</p>` : '';
+            const cta = block.ctaText && block.ctaUrl ? `<a href="${_U().escapeHtml(block.ctaUrl)}" class="btn btn-red btn-lg">${_U().escapeHtml(block.ctaText)}</a>` :
+                        block.ctaText ? `<button class="btn btn-red btn-lg">${_U().escapeHtml(block.ctaText)}</button>` : '';
+            return `<section class="cta-strip reveal"><div class="container"><div class="cta-strip-content"><div class="cta-strip-text">${title}${content}</div><div class="cta-strip-actions">${cta}</div></div></div></section>`;
+        }
+        default:
+            return '';
+    }
+}
+
+// Minimal HTML sanitizer — allows only a small set of tags (b, i, em, strong, br, a, ul, ol, li).
+// Used for admin-entered text content. Anything else is escaped.
+function escapeLightHtml(str) {
+    if (str == null) return '';
+    let s = String(str);
+    // Escape everything first
+    s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    // Re-allow specific tags
+    s = s.replace(/&lt;(\/?)(b|i|em|strong|br|u|s|hr|ul|ol|li|p|h3|h4)&gt;/g, '<$1$2>');
+    // Re-allow anchors with href
+    s = s.replace(/&lt;a\s+href=(&quot;|&#39;)([^&]*)&gt;/g, '<a href="$2">');
+    s = s.replace(/&lt;\/a&gt;/g, '</a>');
+    // Convert newlines to <br> if no block tags present
+    if (!/<p>|<ul>|<ol>|<h3>|<h4>/.test(s)) {
+        s = s.replace(/\n/g, '<br>');
+    }
+    return s;
+}
 function initReveal() {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -515,7 +654,8 @@ async function init() {
         loadBusinessSettings(),
         loadWhatsAppSettings(),
         loadPaymentSettings(),
-        ensureVisitorRegistered()
+        ensureVisitorRegistered(),
+        loadPageBlocks()
     ]);
     initReveal();
 }
