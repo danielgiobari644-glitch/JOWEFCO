@@ -46,8 +46,8 @@ loginForm.addEventListener('submit', async (e) => {
     const password = document.getElementById('loginPassword').value;
     if (!email || !password) return;
     loginError.classList.remove('show');
-    utils.showLoading(true, 'Signing in...');
     try {
+        utils.showLoading(true, 'Signing in...');
         await signInWithEmailAndPassword(auth, email, password);
         utils.showToast('Welcome back!', 'success');
     } catch (error) {
@@ -363,7 +363,6 @@ window.JOWEFCOAdmin = {
     },
     async deleteProduct(id) {
         if (!confirm('Delete this product? This cannot be undone.')) return;
-        utils.showLoading(true, 'Deleting product...');
         try {
             await fsDeleteDoc(doc(db, 'shopItems', id));
             utils.showToast('Product deleted', 'success');
@@ -372,7 +371,6 @@ window.JOWEFCOAdmin = {
             warn(e);
             utils.showToast('Could not delete product', 'error');
         } finally {
-            utils.showLoading(false);
         }
     }
 };
@@ -413,7 +411,6 @@ async function onProductFormSubmit(e) {
         priceMin: price, priceMax: price
     };
 
-    utils.showLoading(true, id ? 'Updating product...' : 'Adding product...');
     try {
         if (id) {
             await updateDoc(doc(db, 'shopItems', id), payload);
@@ -429,7 +426,6 @@ async function onProductFormSubmit(e) {
         warn(e);
         utils.showToast('Could not save product', 'error');
     } finally {
-        utils.showLoading(false);
     }
 }
 
@@ -653,7 +649,6 @@ function viewOrder(id) {
 }
 
 async function updateOrderStatus(id, status) {
-    utils.showLoading(true, 'Updating status...');
     try {
         await updateDoc(doc(db, 'shopOrders', id), { orderStatus: status });
         utils.showToast(`Order marked as ${status.replace(/_/g, ' ')}`, 'success');
@@ -665,7 +660,6 @@ async function updateOrderStatus(id, status) {
         warn(e);
         utils.showToast('Could not update order status', 'error');
     } finally {
-        utils.showLoading(false);
     }
 }
 
@@ -676,7 +670,6 @@ async function confirmPayment(id) {
     const payload = { paymentStatus: newStatus };
     // If confirming, also auto-set orderStatus to payment_confirmed
     if (newStatus === 'confirmed') payload.orderStatus = 'payment_confirmed';
-    utils.showLoading(true, 'Updating payment...');
     try {
         await updateDoc(doc(db, 'shopOrders', id), payload);
         utils.showToast(`Payment ${newStatus}`, 'success');
@@ -690,7 +683,6 @@ async function confirmPayment(id) {
         warn(e);
         utils.showToast('Could not update payment status', 'error');
     } finally {
-        utils.showLoading(false);
     }
 }
 
@@ -704,7 +696,6 @@ async function saveOrderDetails(id) {
         deliveryTime: (document.getElementById('orderDeliveryTime')?.value || '').trim(),
         deliveryInstructions: (document.getElementById('orderDeliveryInstructions')?.value || '').trim()
     };
-    utils.showLoading(true, 'Saving order details...');
     try {
         await updateDoc(doc(db, 'shopOrders', id), payload);
         utils.showToast('Order details saved', 'success');
@@ -716,7 +707,6 @@ async function saveOrderDetails(id) {
         warn(e);
         utils.showToast('Could not save order details', 'error');
     } finally {
-        utils.showLoading(false);
     }
 }
 
@@ -841,12 +831,11 @@ async function loadHeroSettings() {
                 subtitle: document.getElementById('heroSubtitleInput').value,
                 backgroundMedia: document.getElementById('heroBackgroundInput').value
             };
-            utils.showLoading(true, 'Saving...');
             try {
                 await setDoc(doc(db, 'settings', 'hero'), payload, { merge: true });
                 utils.showToast('Hero content saved', 'success');
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -892,14 +881,13 @@ async function loadPortfolioManagement() {
                 media: document.getElementById('portfolioMediaUrl').value.trim(),
                 createdAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Adding...');
             try {
                 await addDoc(collection(db, 'portfolio'), payload);
                 utils.showToast('Portfolio item added', 'success');
                 form.reset();
                 await loadPortfolioManagement();
             } catch (e) { warn(e); utils.showToast('Could not add', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1001,12 +989,13 @@ async function loadContactSettings() {
                 email: document.getElementById('contactEmailInput').value,
                 address: document.getElementById('contactAddressInput').value
             };
-            utils.showLoading(true, 'Saving...');
             try {
                 await setDoc(doc(db, 'settings', 'contact'), payload, { merge: true });
                 utils.showToast('Contact info saved', 'success');
+                // Instantly refresh the contact info displayed on the admin page footer
+                window.JOWEFCO.applyContactInfoNow();
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1041,7 +1030,6 @@ async function loadSocialSettings() {
             const platform = document.getElementById('socialPlatform').value;
             const url = document.getElementById('socialUrl').value.trim();
             if (!url) return;
-            utils.showLoading(true, 'Saving...');
             try {
                 // Use platform as document ID (one link per platform)
                 await setDoc(doc(db, 'socialLinks', platform), { platform, url, createdAt: Timestamp.now() });
@@ -1049,7 +1037,7 @@ async function loadSocialSettings() {
                 form.reset();
                 await loadSocialSettings();
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1090,12 +1078,12 @@ async function loadPaymentSettings() {
                 paymentMethod: 'manual',
                 updatedAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Saving bank details...');
             try {
                 await setDoc(doc(db, 'settings', 'payment'), payload, { merge: true });
                 utils.showToast('Bank transfer details saved', 'success');
+                window.JOWEFCO.applyPaymentNow();
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1125,12 +1113,12 @@ async function loadWhatsAppSettings() {
                 instructions: document.getElementById('whatsappInstructionsInput').value.trim(),
                 updatedAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Saving WhatsApp settings...');
             try {
                 await setDoc(doc(db, 'settings', 'whatsapp'), payload, { merge: true });
                 utils.showToast('WhatsApp settings saved', 'success');
+                window.JOWEFCO.applyWhatsAppNow();
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1169,12 +1157,12 @@ async function loadBusinessSettings() {
                 deliveryCoverage: document.getElementById('deliveryCoverageInput').value.trim(),
                 updatedAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Saving business settings...');
             try {
                 await setDoc(doc(db, 'settings', 'business'), payload, { merge: true });
                 utils.showToast('Business settings saved', 'success');
+                window.JOWEFCO.applyBusinessNow();
             } catch (e) { warn(e); utils.showToast('Could not save', 'error'); }
-            finally { utils.showLoading(false); }
+
         });
     }
 }
@@ -1241,22 +1229,23 @@ async function loadBrandingSettings() {
                 tagline: document.getElementById('brandingTagline').value.trim(),
                 updatedAt: Timestamp.now()
             };
-            utils.showLoading(true, 'Saving branding...');
             try {
                 await setDoc(doc(db, 'settings', 'branding'), payload, { merge: true });
-                utils.showToast('Branding saved. The logo will update across the site on next visit.', 'success');
+                utils.showToast('Branding saved', 'success');
+                // INSTANTLY apply the new logo to the admin UI (sidebar, login
+                // screen, favicon) without a page reload. Other public pages
+                // will pick it up on next visit (or immediately if common.js
+                // is reloaded).
+                await window.JOWEFCO.applyBrandingNow();
             } catch (e) {
                 warn(e);
                 utils.showToast('Could not save branding', 'error');
-            } finally {
-                utils.showLoading(false);
             }
         });
 
         // Reset to default
         document.getElementById('resetBrandingBtn').addEventListener('click', async () => {
             if (!confirm('Reset logo to the default logo.jpg? This will clear the saved logo URL.')) return;
-            utils.showLoading(true, 'Resetting...');
             try {
                 await setDoc(doc(db, 'settings', 'branding'), {
                     logoUrl: '',
@@ -1265,11 +1254,11 @@ async function loadBrandingSettings() {
                 document.getElementById('brandingLogoUrl').value = '';
                 showBrandingPreview('');
                 utils.showToast('Reset to default logo', 'success');
+                // Instantly restore the default logo across the admin UI
+                await window.JOWEFCO.applyBrandingNow();
             } catch (e) {
                 warn(e);
                 utils.showToast('Could not reset', 'error');
-            } finally {
-                utils.showLoading(false);
             }
         });
     }

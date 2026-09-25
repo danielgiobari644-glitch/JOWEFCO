@@ -438,6 +438,43 @@ async function loadPaymentSettings() {
     return pay;
 }
 
+// ==================== INSTANT APPLY (used by admin after save) ====================
+// When the admin saves new branding/contact/business settings, the admin UI
+// should reflect the change immediately without a page reload. These helpers
+// re-run the loader + apply functions and are also exposed on window.JOWEFCO
+// so admin.js can call them after a successful Firestore write.
+async function applyBrandingNow() {
+    await loadBranding();
+}
+async function applyContactInfoNow() {
+    await loadContactInfo();
+}
+async function applyBusinessNow() {
+    await loadBusinessSettings();
+}
+async function applyWhatsAppNow() {
+    await loadWhatsAppSettings();
+}
+async function applyPaymentNow() {
+    await loadPaymentSettings();
+}
+async function applyAllSettingsNow() {
+    await Promise.all([
+        loadBranding(),
+        loadContactInfo(),
+        loadSocialLinks(),
+        loadBusinessSettings(),
+        loadWhatsAppSettings(),
+        loadPaymentSettings()
+    ]);
+}
+window.JOWEFCO.applyBrandingNow = applyBrandingNow;
+window.JOWEFCO.applyContactInfoNow = applyContactInfoNow;
+window.JOWEFCO.applyBusinessNow = applyBusinessNow;
+window.JOWEFCO.applyWhatsAppNow = applyWhatsAppNow;
+window.JOWEFCO.applyPaymentNow = applyPaymentNow;
+window.JOWEFCO.applyAllSettingsNow = applyAllSettingsNow;
+
 // ==================== SCROLL REVEAL ====================
 function initReveal() {
     const observer = new IntersectionObserver((entries) => {
